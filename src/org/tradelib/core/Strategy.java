@@ -145,7 +145,18 @@ public abstract class Strategy implements IBrokerListener {
       con.commit();
    }
    
-   public void writeTrades(Instrument instrument) throws SQLException {
+   public void writeExecutionsAndTrades() throws Exception {
+      writeExecutions();
+      writeTrades();
+   }
+   
+   public void writeTrades() throws Exception {
+      for(String symbol : portfolio.symbols()) {
+         writeTrades(broker.getInstrument(symbol));
+      }
+   }
+   
+   public void writeTrades(Instrument instrument) throws Exception {
       BarHistory history = barData.getHistory(instrument.getSymbol(), Duration.ofDays(1));
       TimeSeries<Double> close = history.getCloseSeries();
       TimeSeries<Double> pnl = portfolio.getPnl(instrument, close);
@@ -839,5 +850,13 @@ public abstract class Strategy implements IBrokerListener {
       Order order = Order.enterShortStopLimit(symbol, quantity, stopPrice, limitPrice, signal);
       order.setExpiration(barsValidFor);
       broker.submitOrder(order);
+   }
+   
+   public void start() throws Exception {
+      getBroker().start();
+   }
+   
+   public void finalize() throws Exception {
+      
    }
 }

@@ -527,4 +527,8 @@ public class Portfolio {
       tr.shorts = shorts.summarize();
       return tr;
    }
+   
+   public Iterable<String> symbols() {
+      return transactions_.keySet();
+   }
 }
