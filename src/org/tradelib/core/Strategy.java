@@ -17,10 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.tradelib.events.BarCloseEvent;
-import org.tradelib.events.BarClosedEvent;
-import org.tradelib.events.BarOpenedEvent;
-
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.FieldNamingPolicy;

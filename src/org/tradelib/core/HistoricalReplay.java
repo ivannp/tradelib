@@ -8,14 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-import org.tradelib.events.BarCloseEvent;
-import org.tradelib.events.BarClosedEvent;
-import org.tradelib.events.BarEvent;
-import org.tradelib.events.BarOpenedEvent;
-
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
-
 public class HistoricalReplay implements IBroker, IBarListener {
    
    private static final Logger logger = Logger.getLogger(HistoricalReplay.class.getName());

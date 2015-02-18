@@ -11,8 +11,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Properties;
 
-import org.tradelib.events.BarEvent;
-
 public class MySQLDataFeed extends HistoricalDataFeed {
    
    private Properties config;
