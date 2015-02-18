@@ -17,8 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -34,7 +32,6 @@ public abstract class Strategy implements IBrokerListener {
    protected BarHierarchy barData = new BarHierarchy();
    protected List<Execution> executions = new ArrayList<Execution>();
    protected Portfolio portfolio = new Portfolio();
-   protected EventBus eventBus;
    
    public void initialize(Context context) throws Exception {
       // Cache some context
