@@ -79,16 +79,20 @@ public class Bar {
    public Duration getDuration() { return duration; }
    public void setDuration(Duration d) { duration = d; }
    
+   public double getTypicalPrice() { return (getHigh() + getClose() + getLow())/3.0; }
+   
+   public double getCongestionPrice() { return (getOpen() + getHigh() + getLow() + 2.0*getClose())/5.0; }
+   
    public boolean isLast() { return last; }
    public void setLast(boolean b) { last = b; }
    public void makeLast() { last = true; }
    
    public String toString() {
-      String result = "";
+      String result = getSymbol() + ": ";
       if(duration.compareTo(Duration.ofDays(1)) == 0) {
-         result = ts.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ": ";
+         result += ts.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ": ";
       } else {
-         result = ts.toString() + ": ";  
+         result += ts.toString() + ": ";  
       }
       
       result += Double.toString(open) + "," + Double.toString(high) + "," + Double.toString(low) +"," + Double.toString(close);

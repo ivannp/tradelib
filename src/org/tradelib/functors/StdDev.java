@@ -4,11 +4,11 @@ import com.google.common.collect.EvictingQueue;
 
 public class StdDev {
    private EvictingQueue<Double> eq;
-   double mean;
-   double var;
-   int count;
-   int n;
-   double dn; // N as a double
+   private double mean;
+   private double var;
+   private int count;
+   private int n;
+   private double dn; // N as a double
    
    public StdDev(int n) {
       this.mean = 0.0;

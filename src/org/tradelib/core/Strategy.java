@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +32,19 @@ public abstract class Strategy implements IBrokerListener {
    protected IBroker broker;
    protected BarHierarchy barData = new BarHierarchy();
    protected List<Execution> executions = new ArrayList<Execution>();
+   
+   private LocalDateTime tradingStart = LocalDateTime.of(1990, 1, 1, 0, 0);
+
    protected Portfolio portfolio = new Portfolio();
+   
+   protected Connection connection = null;
+   
+   protected void connectIfNecessary() throws SQLException {
+      if(connection == null) {
+         connection = DriverManager.getConnection(dbUrl);
+         connection.setAutoCommit(false);
+      }
+   }
    
    public void initialize(Context context) throws Exception {
       // Cache some context
@@ -54,58 +67,59 @@ public abstract class Strategy implements IBrokerListener {
    public void cleanupDb() throws SQLException {
       if(dbUrl == null || name == null) return;
       
-      Connection con = DriverManager.getConnection(dbUrl);
-      con.setAutoCommit(false);
+      connectIfNecessary();
       
       // Load the strategy unique id from the "strategies" table
-      getDbId(con);
+      getDbId();
 
       String query = "DELETE FROM executions WHERE strategy_id=?"; 
-      PreparedStatement stmt = con.prepareStatement(query);
+      PreparedStatement stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.executeUpdate();
       stmt.close();
       
       query = "DELETE FROM trades WHERE strategy_id=?"; 
-      stmt = con.prepareStatement(query);
+      stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.executeUpdate();
       stmt.close();
       
       query = "DELETE FROM pnls WHERE strategy_id=?"; 
-      stmt = con.prepareStatement(query);
+      stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.executeUpdate();
       stmt.close();
       
       query = "DELETE FROM trade_summaries WHERE strategy_id=?"; 
-      stmt = con.prepareStatement(query);
+      stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.executeUpdate();
       stmt.close();
       
       query = "DELETE FROM strategy_positions WHERE strategy_id=?"; 
-      stmt = con.prepareStatement(query);
+      stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.executeUpdate();
       stmt.close();
       
-      con.commit();
+      connection.commit();
    }
    
-   public void getDbId(Connection con) throws SQLException {
+   public void getDbId() throws SQLException {
       if(dbId >= 0) return;
+      
+      connectIfNecessary();
 
       // Get the strategy id
       String query = "SELECT id FROM strategies where name=?";
-      PreparedStatement stmt = con.prepareStatement(query);
+      PreparedStatement stmt = connection.prepareStatement(query);
       stmt.setString(1, name);
       ResultSet rs = stmt.executeQuery();
       if(!rs.next()) {
          // The name doesn't exist, insert it
          rs.close();
          stmt.close();
-         stmt = con.prepareStatement("INSERT INTO strategies(name) values (?)");
+         stmt = connection.prepareStatement("INSERT INTO strategies(name) values (?)");
          stmt.setString(1, name);
          // Ignore errors, some other process may insert the strategy.
          try {
@@ -114,7 +128,7 @@ public abstract class Strategy implements IBrokerListener {
          }
          stmt.close();
          // Repeat the query
-         stmt = con.prepareStatement(query);
+         stmt = connection.prepareStatement(query);
          stmt.setString(1, name);
          rs = stmt.executeQuery();
          rs.next();
@@ -126,13 +140,13 @@ public abstract class Strategy implements IBrokerListener {
    }
    
    public void writeExecutions() throws SQLException {
-      Connection con = DriverManager.getConnection(dbUrl);
-      con.setAutoCommit(false);
+      
+      connectIfNecessary();
 
-      getDbId(con);
+      getDbId();
       
       String query = "INSERT INTO executions(symbol,strategy_id,ts,price,quantity,signal_name) VALUES (?,?,?,?,?,?)";
-      PreparedStatement stmt = con.prepareStatement(query);
+      PreparedStatement stmt = connection.prepareStatement(query);
       for(Execution execution : executions) {
          stmt.setString(1, execution.getSymbol());
          stmt.setLong(2, dbId);
@@ -140,9 +154,11 @@ public abstract class Strategy implements IBrokerListener {
          stmt.setDouble(4, execution.getPrice());
          stmt.setLong(5, execution.getQuantity());
          stmt.setString(6, execution.getSignal());
-         stmt.executeUpdate();
+         // stmt.executeUpdate();
+         stmt.addBatch();
       }
-      con.commit();
+      stmt.executeBatch();
+      connection.commit();
    }
    
    public void writeExecutionsAndTrades() throws Exception {
@@ -162,26 +178,32 @@ public abstract class Strategy implements IBrokerListener {
       TimeSeries<Double> pnl = portfolio.getPnl(instrument, close);
       if(pnl.size() == 0) return;
       
-      Connection con = DriverManager.getConnection(dbUrl);
-      con.setAutoCommit(false);
+      connectIfNecessary();
+      
+      getDbId();
 
-      getDbId(con);
+      long start = System.nanoTime();
       
       // Write the PnL
       String query = " INSERT INTO pnls(strategy_id,symbol,ts,pnl) VALUE (?,?,?,?) " +
                      " ON DUPLICATE KEY UPDATE pnl=?";
-      PreparedStatement stmt = con.prepareStatement(query);
+      PreparedStatement stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.setString(2, instrument.getSymbol());
       for(int ii = 0; ii < pnl.size(); ++ii) {
          stmt.setTimestamp(3, Timestamp.valueOf(pnl.getTimestamp(ii)));
          stmt.setDouble(4, pnl.get(ii));
          stmt.setDouble(5, pnl.get(ii));
-         stmt.executeUpdate();
+         // stmt.executeUpdate();
+         stmt.addBatch();
       }
-      con.commit();
+      stmt.executeBatch();
+      connection.commit();
       stmt.close();
-
+      
+      long elapsedTime = System.nanoTime() - start;
+      // System.out.println("pnls insert took " + String.format("%.4f secs",(double)elapsedTime/1e9));
+      
       Portfolio.TradingResults tr = portfolio.getTradingResults(instrument, close);
       // Write the trade statistics
       if(tr.stats.size() > 0) {
@@ -189,9 +211,10 @@ public abstract class Strategy implements IBrokerListener {
          query = " INSERT INTO trades(strategy_id,symbol,start,end,initial_position, " +
                  "       max_position,num_transactions,pnl,pct_pnl,tick_pnl,fees) " +
                  " VALUES(?,?,?,?,?,?,?,?,?,?,?)";
-         stmt = con.prepareStatement(query);
+         stmt = connection.prepareStatement(query);
          stmt.setLong(1, dbId);
          stmt.setString(2, instrument.getSymbol());
+         start = System.nanoTime();
          for(Trade tradeStats : tr.stats) {
             stmt.setTimestamp(3, Timestamp.valueOf(tradeStats.start));
             stmt.setTimestamp(4, Timestamp.valueOf(tradeStats.end));
@@ -205,25 +228,31 @@ public abstract class Strategy implements IBrokerListener {
             stmt.setDouble(11, tradeStats.fees);
             stmt.executeUpdate();
          }
-         con.commit();
+         connection.commit();
          stmt.close();
+         
+         elapsedTime = System.nanoTime() - start;
+         // System.out.println("trades insert took " + String.format("%.4f secs",(double)elapsedTime/1e9));
       }
       
-      writeTradeSummary(con, instrument, "All", tr.all);
-      writeTradeSummary(con, instrument, "Long", tr.longs);
-      writeTradeSummary(con, instrument, "Short", tr.shorts);
+      writeTradeSummary(instrument, "All", tr.all);
+      writeTradeSummary(instrument, "Long", tr.longs);
+      writeTradeSummary(instrument, "Short", tr.shorts);
       
-      con.commit();
+      connection.commit();
    }
    
-   protected void writeTradeSummary(Connection con, String symbol, String type, TradeSummary tradeSummary) throws SQLException {
+   protected void writeTradeSummary(String symbol, String type, TradeSummary tradeSummary) throws SQLException {
+      
+      connectIfNecessary();
+      
       if(tradeSummary.numTrades > 0) {
          String query = " INSERT INTO trade_summaries (strategy_id,symbol,type,num_trades,gross_profits, " +
                         "      gross_losses,profit_factor,average_daily_pnl,daily_pnl_stddev,sharpe_ratio, " +
                         "      average_trade_pnl,trade_pnl_stddev,pct_positive,pct_negative,max_win,max_loss, " +
                         "      average_win,average_loss,average_win_loss,equity_min,equity_max,max_drawdown) " +
                         " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-         PreparedStatement stmt = con.prepareStatement(query);
+         PreparedStatement stmt = connection.prepareStatement(query);
          stmt.setLong(1, dbId);
          stmt.setString(2, symbol);
          stmt.setString(3, type);
@@ -247,7 +276,7 @@ public abstract class Strategy implements IBrokerListener {
          setDoubleParam(stmt, 21, tradeSummary.equityMax);
          setDoubleParam(stmt, 22, tradeSummary.maxDrawdown);
          stmt.executeUpdate();
-         con.commit();
+         connection.commit();
       }
    }
    
@@ -259,8 +288,8 @@ public abstract class Strategy implements IBrokerListener {
       }
    }
    
-   protected void writeTradeSummary(Connection con, Instrument instrument, String type, TradeSummary tradeSummary) throws SQLException {
-      writeTradeSummary(con, instrument.getSymbol(), type, tradeSummary);
+   protected void writeTradeSummary(Instrument instrument, String type, TradeSummary tradeSummary) throws SQLException {
+      writeTradeSummary(instrument.getSymbol(), type, tradeSummary);
    }
    
    protected void onBarOpen(BarHistory history, Bar bar) throws Exception {}
@@ -312,15 +341,14 @@ public abstract class Strategy implements IBrokerListener {
     */
    public TimeSeries<Double> getAnnualStats() throws SQLException {
       TimeSeries<Double> annualStats = new TimeSeries<Double>(2);
-      
-      Connection con = DriverManager.getConnection(dbUrl);
-      con.setAutoCommit(false);
 
-      getDbId(con);
+      connectIfNecessary();
+      
+      getDbId();
       
       String query = "SELECT ts,pnl FROM pnls WHERE strategy_id=" + Long.toString(dbId) +
                " AND symbol = 'TOTAL' ORDER BY ts ASC";
-      Statement stmt = con.createStatement();
+      Statement stmt = connection.createStatement();
       ResultSet rs = stmt.executeQuery(query);
       
       double equity = 0.0;
@@ -361,18 +389,17 @@ public abstract class Strategy implements IBrokerListener {
          annualStats.add(last, equity, maxDrawdown);
       }
       
-      con.commit();
+      connection.commit();
       
       return annualStats;
    }
    
    public TimeSeries<BigDecimal> getAnnualPnl(String symbols) throws SQLException {
       TimeSeries<BigDecimal> pnl = new TimeSeries<BigDecimal>(1);
-      
-      Connection con = DriverManager.getConnection(dbUrl);
-      con.setAutoCommit(false);
 
-      getDbId(con);
+      connectIfNecessary();
+      
+      getDbId();
       
       // Build the query
       String query = "SELECT ts,pnl FROM pnls WHERE strategy_id=" + Long.toString(dbId) + " AND ";
@@ -391,7 +418,7 @@ public abstract class Strategy implements IBrokerListener {
       
       query += " ORDER BY ts";
 
-      Statement stmt = con.createStatement();
+      Statement stmt = connection.createStatement();
       ResultSet rs = stmt.executeQuery(query);
       while(rs.next()) {
          if(pnl.size() != 0) {
@@ -417,7 +444,7 @@ public abstract class Strategy implements IBrokerListener {
          }
       }
       
-      con.commit();
+      connection.commit();
       
       return pnl;
    }
@@ -570,24 +597,24 @@ public abstract class Strategy implements IBrokerListener {
     * @param[in] the id to use for the entries in the various tables
     */
    void totalTradeStats(String name) throws SQLException {
-      Connection con = DriverManager.getConnection(dbUrl);
-      con.setAutoCommit(false);
 
-      getDbId(con);
+      connectIfNecessary();
+      
+      getDbId();
       
       String query = "DELETE FROM pnls WHERE strategy_id=" + Long.toString(dbId) +
             " AND symbol = \"" + name + "\"";
-      Statement stmt = con.createStatement();
+      Statement stmt = connection.createStatement();
       stmt.executeUpdate(query);
-      con.commit();
+      connection.commit();
       
       stmt.close();
       
       query = "DELETE FROM trade_summaries WHERE strategy_id=" + Long.toString(dbId) +
             " AND symbol = \"" + name + "\"";
-      stmt = con.createStatement();
+      stmt = connection.createStatement();
       stmt.executeUpdate(query);
-      con.commit();
+      connection.commit();
       
       stmt.close();
       
@@ -597,7 +624,7 @@ public abstract class Strategy implements IBrokerListener {
       TradeTotalsBuilder allBuilder = new TradeTotalsBuilder();
       
       query = "SELECT initial_position,pnl FROM trades WHERE strategy_id=" + Long.toString(dbId);
-      stmt = con.createStatement();
+      stmt = connection.createStatement();
       ResultSet rs = stmt.executeQuery(query);
       while(rs.next()) {
          long position = rs.getLong(1);
@@ -610,13 +637,14 @@ public abstract class Strategy implements IBrokerListener {
             allBuilder.add(position, pnl);
          }
       }
+      stmt.close();
       
       // The pair tells us:
       //    1. Weather we have seen non-zero PnL for that timestamp
       //    2. The total PnL
       TreeMap<LocalDateTime,PnlPair> pnlMap = new TreeMap<LocalDateTime, PnlPair>();
       query = "SELECT ts,pnl FROM pnls WHERE strategy_id=" + Long.toString(dbId);
-      stmt = con.createStatement();
+      stmt = connection.createStatement();
       rs = stmt.executeQuery(query);
       while(rs.next()) {
          LocalDateTime ldt = rs.getTimestamp(1).toLocalDateTime();
@@ -633,7 +661,7 @@ public abstract class Strategy implements IBrokerListener {
       
       // Write the total PnL and collect the basic per-bar and equity statistics
       query = "INSERT INTO pnls (strategy_id,symbol,ts,pnl) values (?,?,?,?)";
-      PreparedStatement pstmt = con.prepareStatement(query);
+      PreparedStatement pstmt = connection.prepareStatement(query);
       pstmt.setLong(1, dbId);
       pstmt.setString(2, name);
       
@@ -651,7 +679,8 @@ public abstract class Strategy implements IBrokerListener {
          // Write the PnL
          pstmt.setTimestamp(3, Timestamp.valueOf(entry.getKey()));
          pstmt.setDouble(4, pnl);
-         pstmt.executeUpdate();
+         // pstmt.executeUpdate();
+         pstmt.addBatch();
          
          // Collect statistics
          if(pp.seenNonZero()) barStats.add(pnl);
@@ -662,7 +691,8 @@ public abstract class Strategy implements IBrokerListener {
          maxDrawdown = Math.min(maxDrawdown, equity - maxEquity);
       }
       
-      con.commit();
+      pstmt.executeBatch();
+      connection.commit();
       pstmt.close();
       
       // Write out the total as a trade summary
@@ -675,13 +705,13 @@ public abstract class Strategy implements IBrokerListener {
       summary.dailyPnlStdDev = barStats.getStdDev();
       summary.sharpeRatio = Functions.sharpeRatio(summary.averageDailyPnl, summary.dailyPnlStdDev, 252);
       
-      writeTradeSummary(con, name, "All", summary);
+      writeTradeSummary(name, "All", summary);
       
       // For the shorts and longs totals we don't have equityMin, equityMax, etc
-      writeTradeSummary(con, name, "Long", longsBuilder.summarize());
-      writeTradeSummary(con, name, "Short", shortsBuilder.summarize());
+      writeTradeSummary(name, "Long", longsBuilder.summarize());
+      writeTradeSummary(name, "Short", shortsBuilder.summarize());
       
-      con.commit();
+      connection.commit();
    }
    
    public void totalTradeStats() throws Exception {
@@ -691,41 +721,44 @@ public abstract class Strategy implements IBrokerListener {
    public Portfolio getPortfolio() { return portfolio; }
    
    protected class Status {
-      public long getId() { return id_; }
-      public void setId(long id) { id_ = id; }
+      public long getId() { return id; }
+      public void setId(long id) { this.id = id; }
       
-      public long getStrategyId() { return strategyId_; }
-      public void setStrategyId(long strategyId) { strategyId_ = strategyId; }
+      public long getStrategyId() { return strategyId; }
+      public void setStrategyId(long strategyId) { this.strategyId = strategyId; }
       
-      public String getSymbol() { return symbol_; }
-      public void setSymbol(String symbol) { symbol_ = symbol; }
+      public String getSymbol() { return symbol; }
+      public void setSymbol(String symbol) { this.symbol = symbol; }
       
-      public LocalDateTime getDateTime() { return ts_; }
-      public void setDateTime(LocalDateTime ts) { ts_ = ts; }
+      public LocalDateTime getDateTime() { return ts; }
+      public void setDateTime(LocalDateTime ts) { this.ts = ts; }
       
-      public double getPosition() { return position_; }
-      public void setPosition(double position) { position_ = position; }
+      public double getPosition() { return position; }
+      public void setPosition(double position) { this.position = position; }
       
-      public double getPnl() { return pnl_; }
-      public void setPnl(double pnl) { pnl_ = pnl; }
+      public double getPnl() { return pnl; }
+      public void setPnl(double pnl) { this.pnl = pnl; }
       
-      public double getLastClose() { return lastClose_; }
-      public void setLastClose(double lastClose) { lastClose_ = lastClose; }
+      public double getLastClose() { return lastClose; }
+      public void setLastClose(double lastClose) { this.lastClose = lastClose; }
       
-      public double getEntryPrice() { return entryPrice_; }
-      public void setEntryPrice(double entryPrice) { entryPrice_ = entryPrice; }
+      public LocalDateTime getLastDateTime() { return lastDateTime; }
+      public void setLastDateTime(LocalDateTime ldt) { this.lastDateTime = ldt; }
       
-      public double getEntryRisk() { return entryRisk_; }
-      public void setEntryRisk(double entryRisk) { entryRisk_ = entryRisk; }
+      public double getEntryPrice() { return entryPrice; }
+      public void setEntryPrice(double entryPrice) { this.entryPrice = entryPrice; }
       
-      public LocalDateTime getEntryDateTime() { return since_; }
-      public void setEntryDateTime(LocalDateTime ldt) { since_ = ldt; }
+      public double getEntryRisk() { return entryRisk; }
+      public void setEntryRisk(double entryRisk) { this.entryRisk = entryRisk; }
       
-      public void addOrder(Order order) { orders_.add(order); }
+      public LocalDateTime getEntryDateTime() { return since; }
+      public void setEntryDateTime(LocalDateTime ldt) { this.since = ldt; }
+      
+      public void addOrder(Order order) { orders.add(order); }
       
       public Status(String symbol) {
          setSymbol(symbol);
-         orders_ = new ArrayList<Order>();
+         orders = new ArrayList<Order>();
          numericProperties = new HashMap<String, Double>();
       }
       
@@ -738,7 +771,7 @@ public abstract class Strategy implements IBrokerListener {
          numericProperties.put(name, value);
       }
       
-      public void persist(String dbUrl) throws Exception {
+      public void persist(Connection con) throws Exception {
          
          // Build the JSON status
          JsonObject jo = new JsonObject();
@@ -753,7 +786,7 @@ public abstract class Strategy implements IBrokerListener {
          }
          numericProperties.forEach((k, v) -> jo.addProperty(k, v));
          JsonArray ordersArray = new JsonArray();
-         for(Order oo : orders_) {
+         for(Order oo : orders) {
             ordersArray.add(oo.toJsonString());
          }
          jo.add("orders", ordersArray);
@@ -761,78 +794,272 @@ public abstract class Strategy implements IBrokerListener {
                            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                            .create();
          
-         Connection con = DriverManager.getConnection(dbUrl);
-         con.setAutoCommit(false);
-         
          String query = "INSERT INTO strategy_positions " +
-               "(strategy_id,symbol,ts,details) values(?,?,?,?)";
+               "(strategy_id,symbol,ts,position,last_close,last_ts,details) values(?,?,?,?,?,?,?)";
          PreparedStatement stmt = con.prepareStatement(query);
          stmt.setLong(1, getStrategyId());
          stmt.setString(2, getSymbol());
          stmt.setTimestamp(3, Timestamp.valueOf(getDateTime()));
-         stmt.setString(4, gson.toJson(jo));
+         stmt.setDouble(4, getPosition());
+         stmt.setDouble(5, getLastClose());
+         if(getLastDateTime() != null) {
+            stmt.setTimestamp(6, Timestamp.valueOf(getLastDateTime()));
+         } else {
+            stmt.setNull(6, Types.TIMESTAMP);
+         }
+         stmt.setString(7, gson.toJson(jo));
          
          stmt.executeUpdate();
          
          con.commit();
-         con.close();
       }
       
-      private long id_;
-      private long strategyId_;
-      private String symbol_;
-      private LocalDateTime ts_;
-      private double position_;
-      private LocalDateTime since_;
-      private double pnl_;
-      private double lastClose_;
-      private double entryPrice_;
-      private double entryRisk_;
-      private List<Order> orders_;
-      private HashMap<String, Double> numericProperties;
+      private long id;
+      private long strategyId;
+      private String symbol;
+      private LocalDateTime ts = null;
+      private double position;
+      private LocalDateTime since = null;
+      private double pnl;
+      private double lastClose;
+      private LocalDateTime lastDateTime = null;
+      private double entryPrice;
+      private double entryRisk;
+      private List<Order> orders = null;
+      private HashMap<String, Double> numericProperties = null;
    }
    
-   public void enterLong(String symbol, long quantity, String signal) throws Exception {
-      broker.submitOrder(Order.enterLong(symbol, quantity, signal));
+   public void persistStatus(Strategy.Status status) throws Exception {
+      connectIfNecessary();
+      status.persist(connection);
    }
    
-   public void enterLong(String symbol, long quantity) throws Exception {
-      broker.submitOrder(Order.enterLong(symbol, quantity));
+   public TradeSummary getSummary(String symbol, String type) throws SQLException {
+      TradeSummary summary = new TradeSummary();
+      
+      connectIfNecessary();
+      
+      String query = " SELECT num_trades, gross_profits, gross_losses, profit_factor, " +
+                     "      average_daily_pnl, daily_pnl_stddev, sharpe_ratio, " +
+                     "      average_trade_pnl, trade_pnl_stddev, pct_positive, " +
+                     "      pct_negative, max_win, max_loss, average_win, average_loss, " +
+                     "      average_win_loss, equity_min, equity_max, max_drawdown " +
+                     " FROM trade_summaries " +
+                     " WHERE strategy_id = ? AND symbol = ? AND type = ?";
+      PreparedStatement stmt = connection.prepareStatement(query);
+      stmt.setLong(1, dbId);
+      stmt.setString(2, symbol);
+      stmt.setString(3, type);
+      
+      ResultSet rs = stmt.executeQuery();
+      if(!rs.next()) return null;
+      
+      summary.numTrades = rs.getLong(1);
+      summary.grossProfits = rs.getDouble(2);
+      summary.grossLosses = rs.getDouble(3);
+      summary.profitFactor = rs.getDouble(4);
+      summary.averageDailyPnl = rs.getDouble(5);
+      summary.dailyPnlStdDev = rs.getDouble(6);
+      summary.sharpeRatio = rs.getDouble(7);
+      summary.averageTradePnl = rs.getDouble(8);
+      summary.tradePnlStdDev = rs.getDouble(9);
+      summary.pctPositive = rs.getDouble(10);
+      summary.pctNegative = rs.getDouble(11);
+      summary.maxWin = rs.getDouble(12);
+      summary.maxLoss = rs.getDouble(13);
+      summary.averageWin = rs.getDouble(14);
+      summary.averageLoss = rs.getDouble(15);
+      summary.averageWinLoss = rs.getDouble(16);
+      summary.equityMin = rs.getDouble(17);
+      summary.equityMax = rs.getDouble(18);
+      summary.maxDrawdown = rs.getDouble(19);
+      
+      connection.commit();
+      return summary;
    }
    
-   public void enterShort(String symbol, long quantity, String signal) throws Exception {
-      broker.submitOrder(Order.enterShort(symbol, quantity, signal));
+   public Order enterLong(String symbol, long quantity, String signal) throws Exception {
+      Order order = Order.enterLong(symbol, quantity, signal);
+      broker.submitOrder(order);
+      return order;
    }
    
-   public void enterShort(String symbol, long quantity) throws Exception {
-      broker.submitOrder(Order.enterShort(symbol, quantity));
+   public Order enterLong(String symbol, long quantity) throws Exception {
+      Order order = Order.enterLong(symbol, quantity);
+      broker.submitOrder(order);
+      return order;
    }
    
-   public void exitShort(String symbol) throws Exception {
-      broker.submitOrder(Order.exitShort(symbol, Order.POSITION_QUANTITY));
+   public Order enterLongStop(String symbol, double stopPrice,long quantity) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterLongStop(symbol, quantity, stopPrice);
+      broker.submitOrder(order);
+      return order;
    }
 
-   public void exitShort(String symbol, long quantity) throws Exception {
-      broker.submitOrder(Order.exitShort(symbol, quantity));
-   }
+   public Order enterLongStop(String symbol, double stopPrice, long quantity, String signal) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
 
-   public void exitShort(String symbol, long quantity, String signal) throws Exception {
-      broker.submitOrder(Order.exitShort(symbol, quantity, signal));
+      Order order = Order.enterLongStop(symbol, quantity, stopPrice, signal);
+      broker.submitOrder(order);
+      return order;
    }
    
-   public void exitLong(String symbol) throws Exception {
-      broker.submitOrder(Order.exitLong(symbol, Order.POSITION_QUANTITY));
+   public Order enterLongStop(String symbol, double stopPrice, long quantity, String signal, int barsValidFor) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterLongStop(symbol, quantity, stopPrice, signal);
+      order.setExpiration(barsValidFor);
+      broker.submitOrder(order);
+      return order;
    }
 
-   public void exitLong(String symbol, long quantity) throws Exception {
-      broker.submitOrder(Order.exitLong(symbol, quantity));
+   public Order enterShortStop(String symbol, double stopPrice, long quantity) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterShortStop(symbol, quantity, stopPrice);
+      broker.submitOrder(order);
+      
+      return order;
    }
 
-   public void exitLong(String symbol, long quantity, String signal) throws Exception {
-      broker.submitOrder(Order.exitLong(symbol, quantity, signal));
+   public Order enterShortStop(String symbol, double stopPrice, long quantity, String signal) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterShortStop(symbol, quantity, stopPrice, signal);
+      broker.submitOrder(order);
+      
+      return order;
    }
    
-   public void enterLongStopLimit(String symbol, double stopPrice, double limitPrice, long quantity, String signal, int barsValidFor) throws Exception
+   public Order enterShortStop(String symbol, double stopPrice, long quantity, String signal, int barsValidFor) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterShortStop(symbol, quantity, stopPrice, signal);
+      order.setExpiration(barsValidFor);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+
+   public Order enterShort(String symbol, long quantity, String signal) throws Exception {
+      Order order = Order.enterShort(symbol, quantity, signal);
+      broker.submitOrder(order);
+      return order;
+   }
+   
+   public Order enterShort(String symbol, long quantity) throws Exception {
+      Order order = Order.enterShort(symbol, quantity);
+      broker.submitOrder(order);
+      return order;
+   }
+   
+   public Order exitShort(String symbol) throws Exception {
+      Order order = Order.exitShort(symbol, Order.POSITION_QUANTITY);
+      broker.submitOrder(order);
+      return order;
+   }
+
+   public Order exitShort(String symbol, long quantity) throws Exception {
+      Order order = Order.exitShort(symbol, quantity);
+      broker.submitOrder(order);
+      return order;
+   }
+
+   public Order exitShort(String symbol, long quantity, String signal) throws Exception {
+      Order order = Order.exitShort(symbol, quantity, signal);
+      broker.submitOrder(order);
+      return order;
+   }
+   
+   public Order exitLong(String symbol) throws Exception {
+      Order order = Order.exitLong(symbol, Order.POSITION_QUANTITY);
+      broker.submitOrder(order);
+      return order;
+   }
+
+   public Order exitLong(String symbol, long quantity) throws Exception {
+      Order order = Order.exitLong(symbol, quantity);
+      broker.submitOrder(order);
+      return order;
+   }
+
+   public Order exitLong(String symbol, long quantity, String signal) throws Exception {
+      Order order = Order.exitLong(symbol, quantity, signal);
+      broker.submitOrder(order);
+      return order;
+   }
+   
+   public Order exitLongStop(String symbol, double stopPrice, long quantity) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.exitLongStop(symbol, quantity, stopPrice);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order exitLongStop(String symbol, double stopPrice, long quantity, String signal) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.exitLongStop(symbol, quantity, stopPrice, signal);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order exitLongStop(String symbol, double stopPrice, long quantity, String signal, int barsValidFor) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.exitLongStop(symbol, quantity, stopPrice, signal);
+      order.setExpiration(barsValidFor);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order exitShortStop(String symbol, double stopPrice, long quantity) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.exitShortStop(symbol, quantity, stopPrice);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order exitShortStop(String symbol, double stopPrice, long quantity, String signal) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.exitShortStop(symbol, quantity, stopPrice, signal);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order exitShortStop(String symbol, double stopPrice, long quantity, String signal, int barsValidFor) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.exitShortStop(symbol, quantity, stopPrice, signal);
+      order.setExpiration(barsValidFor);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order enterLongStopLimit(String symbol, double stopPrice, double limitPrice, long quantity, String signal, int barsValidFor) throws Exception
    {
       assert quantity > 0;
       assert broker != null;
@@ -840,9 +1067,11 @@ public abstract class Strategy implements IBrokerListener {
       Order order = Order.enterLongStopLimit(symbol, quantity, stopPrice, limitPrice, signal);
       order.setExpiration(barsValidFor);
       broker.submitOrder(order);
+      
+      return order;
    }
    
-   public void enterShortStopLimit(String symbol, double stopPrice, double limitPrice, long quantity, String signal, int barsValidFor) throws Exception
+   public Order enterShortStopLimit(String symbol, double stopPrice, double limitPrice, long quantity, String signal, int barsValidFor) throws Exception
    {
       assert quantity > 0;
       assert broker != null;
@@ -850,6 +1079,8 @@ public abstract class Strategy implements IBrokerListener {
       Order order = Order.enterShortStopLimit(symbol, quantity, stopPrice, limitPrice, signal);
       order.setExpiration(barsValidFor);
       broker.submitOrder(order);
+      
+      return order;
    }
    
    public void start() throws Exception {
@@ -859,4 +1090,7 @@ public abstract class Strategy implements IBrokerListener {
    public void finalize() throws Exception {
       
    }
+   
+   public void setTradingStart(LocalDateTime ldt) {tradingStart = ldt; }
+   public LocalDateTime getTradingStart() { return tradingStart; }
 }

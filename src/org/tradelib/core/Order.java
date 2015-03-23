@@ -35,39 +35,39 @@ public class Order {
    
    public static Order enterLong(String s, long q) { return new Order(s, q, Double.NaN, Double.NaN, Type.ENTER_LONG); }
    public static Order enterLong(String s, long q, String sig) { return new Order(s, q, Double.NaN, Double.NaN, Type.ENTER_LONG, sig); }
-   public static Order enterLongLimit(String s, long q, double lp) { return new Order(s, q, Double.NaN, lp, Type.ENTER_LONG_LIMIT); }
-   public static Order enterLongLimit(String s, long q, double lp, String sig) { return new Order(s, q, Double.NaN, lp, Type.ENTER_LONG_LIMIT, sig); }
-   public static Order enterLongStop(String s, long q, double sp) { return new Order(s, q, sp, Double.NaN, Type.ENTER_LONG_STOP); }
-   public static Order enterLongStop(String s, long q, double sp, String sig) { return new Order(s, q, sp, Double.NaN, Type.ENTER_LONG_STOP, sig); }
-   public static Order enterLongStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, sp, lp, Type.ENTER_LONG_STOP_LIMIT); }
-   public static Order enterLongStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, sp, lp, Type.ENTER_LONG_STOP_LIMIT, sig); }
+   public static Order enterLongLimit(String s, long q, double lp) { return new Order(s, q, lp, Double.NaN, Type.ENTER_LONG_LIMIT); }
+   public static Order enterLongLimit(String s, long q, double lp, String sig) { return new Order(s, q, lp, Double.NaN, Type.ENTER_LONG_LIMIT, sig); }
+   public static Order enterLongStop(String s, long q, double sp) { return new Order(s, q, Double.NaN, sp, Type.ENTER_LONG_STOP); }
+   public static Order enterLongStop(String s, long q, double sp, String sig) { return new Order(s, q, Double.NaN, sp, Type.ENTER_LONG_STOP, sig); }
+   public static Order enterLongStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, lp, sp, Type.ENTER_LONG_STOP_LIMIT); }
+   public static Order enterLongStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, lp, sp, Type.ENTER_LONG_STOP_LIMIT, sig); }
    
    public static Order enterShort(String s, long q) { return new Order(s, q, Double.NaN, Double.NaN, Type.ENTER_SHORT); }
    public static Order enterShort(String s, long q, String sig) { return new Order(s, q, Double.NaN, Double.NaN, Type.ENTER_SHORT, sig); }
-   public static Order enterShortLimit(String s, long q, double lp) { return new Order(s, q, Double.NaN, lp, Type.ENTER_SHORT_LIMIT); }
-   public static Order enterShortLimit(String s, long q, double lp, String sig) { return new Order(s, q, Double.NaN, lp, Type.ENTER_SHORT_LIMIT, sig); }
-   public static Order enterShortStop(String s, long q, double sp) { return new Order(s, q, sp, Double.NaN, Type.ENTER_SHORT_STOP); }
-   public static Order enterShortStop(String s, long q, double sp, String sig) { return new Order(s, q, sp, Double.NaN, Type.ENTER_SHORT_STOP, sig); }
-   public static Order enterShortStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, sp, lp, Type.ENTER_SHORT_STOP_LIMIT); }
-   public static Order enterShortStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, sp, lp, Type.ENTER_SHORT_STOP_LIMIT, sig); }
+   public static Order enterShortLimit(String s, long q, double lp) { return new Order(s, q, lp, Double.NaN, Type.ENTER_SHORT_LIMIT); }
+   public static Order enterShortLimit(String s, long q, double lp, String sig) { return new Order(s, q, lp, Double.NaN, Type.ENTER_SHORT_LIMIT, sig); }
+   public static Order enterShortStop(String s, long q, double sp) { return new Order(s, q, Double.NaN, sp, Type.ENTER_SHORT_STOP); }
+   public static Order enterShortStop(String s, long q, double sp, String sig) { return new Order(s, q, Double.NaN, sp, Type.ENTER_SHORT_STOP, sig); }
+   public static Order enterShortStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, lp, sp, Type.ENTER_SHORT_STOP_LIMIT); }
+   public static Order enterShortStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, lp, sp, Type.ENTER_SHORT_STOP_LIMIT, sig); }
 
    public static Order exitLong(String s, long q) { return new Order(s, q, Double.NaN, Double.NaN, Type.EXIT_LONG); }
    public static Order exitLong(String s, long q, String sig) { return new Order(s, q, Double.NaN, Double.NaN, Type.EXIT_LONG, sig); }
-   public static Order exitLongLimit(String s, long q, double lp) { return new Order(s, q, Double.NaN, lp, Type.EXIT_LONG_LIMIT); }
-   public static Order exitLongLimit(String s, long q, double lp, String sig) { return new Order(s, q, Double.NaN, lp, Type.EXIT_LONG_LIMIT, sig); }
-   public static Order exitLongStop(String s, long q, double sp) { return new Order(s, q, sp, Double.NaN, Type.EXIT_LONG_STOP); }
-   public static Order exitLongStop(String s, long q, double sp, String sig) { return new Order(s, q, sp, Double.NaN, Type.EXIT_LONG_STOP, sig); }
-   public static Order exitLongStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, sp, lp, Type.EXIT_LONG_STOP_LIMIT); }
-   public static Order exitLongStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, sp, lp, Type.EXIT_LONG_STOP_LIMIT, sig); }
+   public static Order exitLongLimit(String s, long q, double lp) { return new Order(s, q, lp, Double.NaN, Type.EXIT_LONG_LIMIT); }
+   public static Order exitLongLimit(String s, long q, double lp, String sig) { return new Order(s, q, lp, Double.NaN, Type.EXIT_LONG_LIMIT, sig); }
+   public static Order exitLongStop(String s, long q, double sp) { return new Order(s, q, Double.NaN, sp, Type.EXIT_LONG_STOP); }
+   public static Order exitLongStop(String s, long q, double sp, String sig) { return new Order(s, q, Double.NaN, sp, Type.EXIT_LONG_STOP, sig); }
+   public static Order exitLongStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, lp, sp, Type.EXIT_LONG_STOP_LIMIT); }
+   public static Order exitLongStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, lp, sp, Type.EXIT_LONG_STOP_LIMIT, sig); }
 
    public static Order exitShort(String s, long q) { return new Order(s, q, Double.NaN, Double.NaN, Type.EXIT_SHORT); }
    public static Order exitShort(String s, long q, String sig) { return new Order(s, q, Double.NaN, Double.NaN, Type.EXIT_SHORT, sig); }
-   public static Order exitShortLimit(String s, long q, double lp) { return new Order(s, q, Double.NaN, lp, Type.EXIT_SHORT_LIMIT); }
-   public static Order exitShortLimit(String s, long q, double lp, String sig) { return new Order(s, q, Double.NaN, lp, Type.EXIT_SHORT_LIMIT, sig); }
-   public static Order exitShortStop(String s, long q, double sp) { return new Order(s, q, sp, Double.NaN, Type.EXIT_SHORT_STOP); }
-   public static Order exitShortStop(String s, long q, double sp, String sig) { return new Order(s, q, sp, Double.NaN, Type.EXIT_SHORT_STOP, sig); }
-   public static Order exitShortStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, sp, lp, Type.EXIT_SHORT_STOP_LIMIT); }
-   public static Order exitShortStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, sp, lp, Type.EXIT_SHORT_STOP_LIMIT, sig); }
+   public static Order exitShortLimit(String s, long q, double lp) { return new Order(s, q, lp, Double.NaN, Type.EXIT_SHORT_LIMIT); }
+   public static Order exitShortLimit(String s, long q, double lp, String sig) { return new Order(s, q, lp, Double.NaN, Type.EXIT_SHORT_LIMIT, sig); }
+   public static Order exitShortStop(String s, long q, double sp) { return new Order(s, q, Double.NaN, sp, Type.EXIT_SHORT_STOP); }
+   public static Order exitShortStop(String s, long q, double sp, String sig) { return new Order(s, q, Double.NaN, sp, Type.EXIT_SHORT_STOP, sig); }
+   public static Order exitShortStopLimit(String s, long q, double sp, double lp) { return new Order(s, q, lp, sp, Type.EXIT_SHORT_STOP_LIMIT); }
+   public static Order exitShortStopLimit(String s, long q, double sp, double lp, String sig) { return new Order(s, q, lp, sp, Type.EXIT_SHORT_STOP_LIMIT, sig); }
    
    public Order(String ss, long qq, double lp, double sp, Type tt) {
       this.symbol = ss;

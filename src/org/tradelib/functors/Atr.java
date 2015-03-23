@@ -1,7 +1,7 @@
 package org.tradelib.functors;
 
 public class Atr {
-   enum MaType { SMA, EMA }
+   public enum MaType { SMA, EMA }
    private IMa ima;
    private int n;
    private double dn;

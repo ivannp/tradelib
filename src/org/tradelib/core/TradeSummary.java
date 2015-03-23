@@ -1,6 +1,11 @@
 package org.tradelib.core;
 
 public class TradeSummary {
+   public int id;
+   public int stratedyId;
+   public String symbol;
+   public String type;
+   
    public long numTrades;
    public double grossProfits;
    public double grossLosses;

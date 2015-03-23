@@ -7,7 +7,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
 
@@ -27,8 +32,18 @@ public class MySQLDataFeed extends HistoricalDataFeed {
     */
    @Override
    public void configure(String path) throws Exception {
-      this.config = new Properties();
-      this.config.load(new FileInputStream(path));
+      config = new Properties();
+      config.load(new FileInputStream(path));
+      
+      String fs = config.getProperty("feed.start", null);
+      if(fs != null) {
+         try {
+            LocalDateTime ldt = LocalDate.parse(fs, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
+            setFeedStart(ldt);
+         } catch(Exception e) {
+            
+         }
+      }
    }
 
    @Override
@@ -52,21 +67,57 @@ public class MySQLDataFeed extends HistoricalDataFeed {
 
       PreparedStatement stmt = con.prepareStatement(query);
       int index = 1;
-      if(getFeedStart() != null) stmt.setTimestamp(index++, Timestamp.valueOf(getFeedStart()));;
-      if(getFeedStop() != null) stmt.setTimestamp(index++, Timestamp.valueOf(getFeedStop()));;
+      if(getFeedStart() != null) stmt.setTimestamp(index++, Timestamp.valueOf(getFeedStart()));
+      if(getFeedStop() != null) stmt.setTimestamp(index++, Timestamp.valueOf(getFeedStop()));
       
       ResultSet rs = stmt.executeQuery();
-      boolean more = rs.next();
-      while(more) {
-         String symbol = rs.getString(1);
-         Bar bar = new Bar(symbol, rs.getTimestamp(2).toLocalDateTime(),
-                           rs.getBigDecimal(3).doubleValue(),
-                           rs.getBigDecimal(4).doubleValue(),
-                           rs.getBigDecimal(5).doubleValue(),
-                           rs.getBigDecimal(6).doubleValue(),
-                           rs.getLong(7), rs.getLong(8), rs.getLong(9));
-         more = rs.next();
-         bar.setLast(!more);
+      boolean moreRecords = rs.next();
+      
+      ArrayDeque<Bar> queue = new ArrayDeque<Bar>();
+      HashMap<String, Integer> counters = new HashMap<String, Integer>();
+      
+      while(true) {
+         while(moreRecords) {
+            // No reason to read a record if the queue head has a record with
+            // a counter of more than one. In this case, we know this is not
+            // the last bar for this instrument.
+            boolean readRecord = true;
+            
+            if(queue.size() != 0) {
+               Integer count = counters.get(queue.peek().getSymbol());
+               if(count != null && count > 1) readRecord = false;
+            }
+            
+            if(!readRecord) break;
+            
+            // Read a bar, add it to the queue and to the counting hash.
+            Bar bar = new Bar(rs.getString(1), rs.getTimestamp(2).toLocalDateTime(),
+                              rs.getBigDecimal(3).doubleValue(),
+                              rs.getBigDecimal(4).doubleValue(),
+                              rs.getBigDecimal(5).doubleValue(),
+                              rs.getBigDecimal(6).doubleValue(),
+                              rs.getLong(7), rs.getLong(8), rs.getLong(9));
+            queue.add(bar);
+            Integer count = counters.get(bar.getSymbol());
+            if(count == null) counters.put(bar.getSymbol(), 1);
+            else counters.put(bar.getSymbol(), count + 1);
+            
+            moreRecords = rs.next();
+         }
+         
+         if(queue.size() == 0) {
+            // Done
+            break;
+         }
+         
+         // Get the next bar
+         Bar bar = queue.poll();
+         // Get the counter
+         Integer counter = counters.get(bar.getSymbol());
+         // Update the counter
+         counters.put(bar.getSymbol(), counter - 1);
+         
+         bar.setLast(counter == 1);
          
          // Notify all listeners
          Iterator<IBarListener> listenerIt = barListeners.iterator();

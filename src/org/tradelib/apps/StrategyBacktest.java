@@ -1,6 +1,7 @@
 package org.tradelib.apps;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
@@ -14,6 +15,7 @@ import org.tradelib.core.HistoricalReplay;
 import org.tradelib.core.MySQLDataFeed;
 import org.tradelib.core.Strategy;
 import org.tradelib.core.TimeSeries;
+import org.tradelib.core.TradeSummary;
 
 public class StrategyBacktest {
 
@@ -44,13 +46,25 @@ public class StrategyBacktest {
       
       strategy.initialize(context);
       strategy.cleanupDb();
+      
+      long start = System.nanoTime();
       strategy.start();
+      long elapsedTime = System.nanoTime() - start;
+      System.out.println("backtest took " + String.format("%.2f secs",(double)elapsedTime/1e9));
+      
+      start = System.nanoTime();
       strategy.writeExecutionsAndTrades();
+      elapsedTime = System.nanoTime() - start;
+      System.out.println("writing to the database took " + String.format("%.2f secs",(double)elapsedTime/1e9));
+      
+      System.out.println();
       
       // Compute total statistics
       strategy.totalTradeStats();
 
       // Short performance statistics for the report
+      
+      // Annual statistics
       TimeSeries<Double> annualStats = strategy.getAnnualStats();
       
       if(annualStats.size() > 0) {
@@ -65,10 +79,20 @@ public class StrategyBacktest {
             avgDrawdown.add(Math.abs(annualStats.get(ii, 1)));
          }
          
+         System.out.println();
+         
          String spnl = String.format("%,.2f", avgPnl.get());
          String smd = String.format("%,.2f", avgDrawdown.get());
          double gainToPain = avgPnl.get() / avgDrawdown.get();
          System.out.println("Avg PnL: " + spnl + ", Avg DD: " + smd + ", Gain to Pain: " + String.format("%.4f", gainToPain));
+      } else {
+         System.out.println();
       }
+      
+      // Global statistics
+      TradeSummary summary = strategy.getSummary("TOTAL", "All");
+      System.out.println("Avg Trade PnL: " + String.format("%,.2f", summary.averageTradePnl) +
+                         ", Max DD: " + String.format("%,.2f", summary.maxDrawdown) +
+                         ", Num Trades: " + Long.toString(summary.numTrades));
    }
 }
