@@ -24,7 +24,7 @@ public class Portfolio {
       public double netPnl;
       public double fees;
 
-      Transaction(LocalDateTime ldt, long q, double p, double f) {
+      public Transaction(LocalDateTime ldt, long q, double p, double f) {
          ts = ldt;
          quantity = q;
          price = p;
@@ -37,7 +37,7 @@ public class Portfolio {
          netPnl = 0.0;
       }
 
-      Transaction(LocalDateTime ldt) {
+      public Transaction(LocalDateTime ldt) {
          ts = ldt;
          quantity = 0;
          price = 0.0;
@@ -51,37 +51,95 @@ public class Portfolio {
       }
    }
    
+   private class PositionPnl {
+      public LocalDateTime ts;
+      public double positionQuantity;
+      public double positionValue;
+      public double positionAverageCost;
+      public double transactionValue;
+      public double realizedPnl;
+      public double unrealizedPnl;
+      public double grossPnl;
+      public double netPnl;
+      public double fees;
+      
+      public PositionPnl(LocalDateTime ldt) {
+         positionQuantity = 0.0;
+         positionValue = 0.0;
+         positionAverageCost = 0.0;
+         transactionValue = 0.0;
+         realizedPnl = 0.0;
+         unrealizedPnl = 0.0;
+         grossPnl = 0.0;
+         netPnl = 0.0;
+         fees = 0.0;
+         
+         ts = ldt;
+      }
+      
+      public PositionPnl() {
+         this(LocalDateTime.MIN);
+      }
+   }
+   
+   // 'Long.Value', 'Short.Value', 'Net.Value', 'Gross.Value', 'Period.Realized.PL', 'Period.Unrealized.PL', 'Gross.Trading.PL', 'Txn.Fees', 'Net.Trading.PL'
+   private class Summary {
+      public LocalDateTime ts; // the timestamp for this summary
+      public double longValue;
+      public double shortValue;
+      public double netValue;
+      public double grossValue;
+      public double txnFees;
+      public double realizedPnl; // period realized PnL
+      public double unrealizedPnl; // period unrealized PnL
+      public double grossPnl; // gross trading PnL
+      public double netPnl; // net trading PnL
+   }
+   
+   private class InstrumentCB {
+      public ArrayList<Transaction> transactions;
+      public ArrayList<PositionPnl> positionPnls;
+      public ArrayList<Summary> summaries;
+      
+      public InstrumentCB() {
+         transactions = new ArrayList<Transaction>();
+         transactions.add(new Transaction(LocalDateTime.MIN));
+         
+         positionPnls = new ArrayList<Portfolio.PositionPnl>();
+         positionPnls.add(new PositionPnl());
+         
+         summaries = new ArrayList<Summary>();
+      }
+   }
+   
    String name_;
-   HashMap<String, ArrayList<Transaction>> transactions_;
+   HashMap<String, InstrumentCB> instrumentMap;
    
    public Portfolio(String name) {
       this.name_ = name;
-      this.transactions_ = new HashMap<String, ArrayList<Transaction>>();
+      this.instrumentMap = new HashMap<String, InstrumentCB>();
    }
    
    public Portfolio() {
       this.name_ = DEFAULT_NAME;
-      this.transactions_ = new HashMap<String, ArrayList<Transaction>>();
+      this.instrumentMap = new HashMap<String, InstrumentCB>();
    }
    
    public void addInstrument(Instrument i) {
-      ArrayList<Transaction> instrumentTransactions = transactions_.get(i.getSymbol());
-      if(instrumentTransactions == null) {
-         instrumentTransactions = new ArrayList<Transaction>();
-         // Add an all-zeroes transaction as origin
-         instrumentTransactions.add(new Transaction(LocalDateTime.MIN));
-         transactions_.put(i.getSymbol(), instrumentTransactions);
+      InstrumentCB icb = instrumentMap.get(i.getSymbol());
+      if(icb == null) {
+         instrumentMap.put(i.getSymbol(), new InstrumentCB());
       }
    }
    
    public void addTransaction(Instrument i, LocalDateTime ldt, long q, double p, double f) {
-      ArrayList<Transaction> instrumentTransactions = transactions_.get(i.getSymbol());
-      if(instrumentTransactions == null) {
-         instrumentTransactions = new ArrayList<Transaction>();
-         // Add an all-zeroes transaction as origin
-         instrumentTransactions.add(new Transaction(LocalDateTime.MIN));
-         transactions_.put(i.getSymbol(), instrumentTransactions);
+      InstrumentCB icb = instrumentMap.get(i.getSymbol());
+      if(icb == null) {
+         icb = new InstrumentCB();
+         instrumentMap.put(i.getSymbol(), icb);
       }
+      
+      ArrayList<Transaction> instrumentTransactions = icb.transactions;
       
       assert ldt.isAfter(instrumentTransactions.get(instrumentTransactions.size()-1).ts) : "Transactions must be added in chronological order!";
       
@@ -141,6 +199,96 @@ public class Portfolio {
       addTransaction(e.getInstrument(), e.getDateTime(), e.getQuantity(), e.getPrice(), e.getFees());
    }
    
+   public void updatePnl(Instrument instrument, TimeSeries<Double> prices) {
+      InstrumentCB icb = instrumentMap.get(instrument.getSymbol());
+      List<Transaction> transactions = icb.transactions;
+      
+      PositionPnl lastPnl = icb.positionPnls.get(icb.positionPnls.size() - 1);
+      
+      // We only process prices after the last PnL
+      int priceId = 0;
+      while(priceId < prices.size() && prices.getTimestamp(priceId).isBefore(lastPnl.ts)) {
+         ++priceId;
+      }
+      
+      // Find qualifying transactions
+      int txnId = 0;
+      while(txnId < transactions.size() && !transactions.get(txnId).ts.isAfter(lastPnl.ts)) {
+         ++txnId;
+      }
+      
+      boolean hasPrices = priceId < prices.size();
+      boolean hasTxns = txnId < transactions.size();
+      
+      while(hasPrices || hasTxns) {
+         if(hasPrices && hasTxns && prices.getTimestamp(priceId).equals(transactions.get(txnId).ts)) {
+            Transaction txn = transactions.get(txnId);
+            
+            PositionPnl ppnl = new PositionPnl(txn.ts);
+            
+            // The current time is both in the price list and in the transaction list
+            ppnl.positionQuantity = txn.positionQuantity;
+            ppnl.positionAverageCost = txn.positionAverageCost;
+            ppnl.transactionValue = txn.value;
+            ppnl.fees = txn.fees;
+            ppnl.positionValue = instrument.getBpv() * ppnl.positionQuantity * prices.get(priceId);
+            ppnl.grossPnl = ppnl.positionValue - lastPnl.positionValue - ppnl.transactionValue;
+            ppnl.realizedPnl = txn.grossPnl;
+            ppnl.unrealizedPnl = ppnl.grossPnl - txn.grossPnl;
+            ppnl.netPnl = ppnl.grossPnl + txn.fees;
+
+            icb.positionPnls.add(ppnl);
+            lastPnl = ppnl;
+            
+            ++priceId;
+            ++txnId;
+            
+            hasPrices = priceId < prices.size();
+            hasTxns = txnId < transactions.size();
+         } else if(!hasTxns || prices.getTimestamp(priceId).isBefore(transactions.get(txnId).ts)) {
+            PositionPnl ppnl = new PositionPnl(prices.getTimestamp(priceId));
+            
+            // No position change, only mark for the price
+            ppnl.positionQuantity = lastPnl.positionQuantity;
+            ppnl.positionAverageCost = lastPnl.positionAverageCost;
+            ppnl.transactionValue = 0.0;
+            ppnl.fees = 0.0;
+            ppnl.positionValue = instrument.getBpv() * ppnl.positionQuantity * prices.get(priceId);
+            ppnl.grossPnl = ppnl.positionValue - lastPnl.positionValue;
+            ppnl.realizedPnl = 0.0;
+            ppnl.unrealizedPnl = ppnl.grossPnl;
+            ppnl.netPnl = ppnl.grossPnl;
+
+            icb.positionPnls.add(ppnl);
+            lastPnl = ppnl;
+            
+            ++priceId;
+            hasPrices = priceId < prices.size();
+         } else {
+            Transaction txn = transactions.get(txnId);
+            
+            PositionPnl ppnl = new PositionPnl(transactions.get(txnId).ts);
+            
+            ppnl.positionQuantity = txn.positionQuantity;
+            ppnl.positionAverageCost = txn.positionAverageCost;
+            ppnl.transactionValue = txn.value;
+            ppnl.fees = txn.fees;
+            // Use the previous price
+            ppnl.positionValue = instrument.getBpv() * ppnl.positionQuantity * prices.get(priceId - 1);
+            ppnl.grossPnl = ppnl.positionValue - lastPnl.positionValue - ppnl.transactionValue;
+            ppnl.realizedPnl = txn.grossPnl;
+            ppnl.unrealizedPnl = ppnl.grossPnl - txn.grossPnl;
+            ppnl.netPnl = ppnl.grossPnl + txn.fees;
+
+            icb.positionPnls.add(ppnl);
+            lastPnl = ppnl;
+            
+            ++txnId;
+            hasTxns = txnId < transactions.size();
+         }
+      }
+   }
+   
    /**
     * @brief Computes the PnL for an instrument
     *
@@ -153,7 +301,7 @@ public class Portfolio {
    {
       TimeSeries<Double> pnl = new TimeSeries<Double>();
       
-      ArrayList<Transaction> transactions = transactions_.get(instrument.getSymbol());
+      ArrayList<Transaction> transactions = instrumentMap.get(instrument.getSymbol()).transactions;
 
       // Handle the trivial case of no transactions.
       if(transactions.size() <= 1) {
@@ -182,8 +330,8 @@ public class Portfolio {
          if(prices.getTimestamp(ii).equals(transaction.ts)) {
             // The current time is both in the price list and in the transaction list
             double transactionValue = transaction.value;
-            double positionValue = instrument.getBpv() * transaction.positionQuantity * prices.get(ii).doubleValue();
-            double pnlValue = positionValue - previousPositionValue - transactionValue; 
+            double positionValue = instrument.getBpv() * transaction.positionQuantity * prices.get(ii);
+            double pnlValue = positionValue - previousPositionValue - transactionValue + transaction.fees; 
             pnl.add(prices.getTimestamp(ii), pnlValue);
 
             ++ii;
@@ -201,7 +349,7 @@ public class Portfolio {
          } else {
             if(ii > 0) {
                // Only in the transaction list - use the previous price
-               double positionValue = transaction.positionQuantity * instrument.getBpv() * prices.get(ii-1).doubleValue();
+               double positionValue = transaction.positionQuantity * instrument.getBpv() * prices.get(ii-1);
                double pnlValue = positionValue - previousPositionValue - transaction.value;
                pnl.add(transaction.ts, pnlValue);
 
@@ -241,7 +389,7 @@ public class Portfolio {
     * @param[in] price the price to compute the PnL
     */
    public Pnl getPositionPnl(Instrument instrument, Double price) {
-      ArrayList<Transaction> instrumentTransactions = transactions_.get(instrument.getSymbol());
+      ArrayList<Transaction> instrumentTransactions = instrumentMap.get(instrument.getSymbol()).transactions;
       int ii = instrumentTransactions.size() - 1;
       Transaction transaction = instrumentTransactions.get(ii);
       assert transaction.positionQuantity != 0 : "Must not be called without a position";
@@ -272,7 +420,9 @@ public class Portfolio {
     * @param fees The transaction fees.
     */
    public void closePosition(Instrument instrument, LocalDateTime ldt, double price, double fees) {
-      ArrayList<Transaction> instrumentTransactions = transactions_.get(instrument.getSymbol());
+      InstrumentCB icb = instrumentMap.get(instrument.getSymbol());
+      if(icb == null) return;
+      ArrayList<Transaction> instrumentTransactions = icb.transactions;
       if(instrumentTransactions == null || instrumentTransactions.size() <= 1) return;
       Transaction transaction = instrumentTransactions.get(instrumentTransactions.size()-1);
       if(transaction.quantity != 0) addTransaction(instrument, ldt, -transaction.quantity, price, fees);
@@ -443,8 +593,11 @@ public class Portfolio {
     */
    public List<Trade> getTrades(Instrument instrument) {
       List<Trade> list = new ArrayList<Trade>();
+
+      InstrumentCB icb = instrumentMap.get(instrument.getSymbol());
+      if(icb == null) return list;
       
-      ArrayList<Transaction> transactions = transactions_.get(instrument.getSymbol());
+      ArrayList<Transaction> transactions = icb.transactions;
       if(transactions == null) return list;
       
       int ii = 0;
@@ -529,6 +682,6 @@ public class Portfolio {
    }
    
    public Iterable<String> symbols() {
-      return transactions_.keySet();
+      return instrumentMap.keySet();
    }
 }
