@@ -50,6 +50,11 @@ public class TimeSeries<T> {
       this(1);
    }
    
+   public TimeSeries(String ...columnNames) {
+      this(columnNames.length);
+      setNames(columnNames);
+   }
+   
    public TimeSeries(TimeSeries<T> ts) {
       index = new ArrayList<LocalDateTime>(ts.size());
       index.addAll(ts.getTimestamps());
@@ -117,7 +122,7 @@ public class TimeSeries<T> {
       return new TimeSeries<T>(index, data.get(colId));
    }
    
-   public TimeSeries<T> getData(String colname) {
+   public TimeSeries<T> columns(String colname) {
       return getData(columnNames.get(colname));
    }
    
@@ -170,6 +175,7 @@ public class TimeSeries<T> {
 // Returns the subList [beg, end) - the "end" element is not included
    public List<LocalDateTime> getTimestamps(int beg, int end) { return index.subList(beg, end); }
    public LocalDateTime getTimestamp(int id) { return index.get(id); }
+   public LocalDateTime getLastTimestamp() { return index.get(index.size() - 1); }
    
    public TimeSeries<T> subset(LocalDateTime from, LocalDateTime to) {
       int fromId = Collections.binarySearch(index, from);

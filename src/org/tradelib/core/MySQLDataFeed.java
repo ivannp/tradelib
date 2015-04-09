@@ -130,15 +130,18 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       
       Connection con = DriverManager.getConnection(config.getProperty("db.url"));
       String table = config.getProperty("instruments.table");
+      String provider = config.getProperty("instrument.provider");
       
       String query = "SELECT tick,bpv,comment,exchange " +
                      "FROM " + table + " " +
-                     "WHERE symbol=?";
+                     "WHERE symbol=? AND provider=?";
       PreparedStatement stmt = con.prepareStatement(query);
       stmt.setString(1, symbol);
+      stmt.setString(2, provider);
       ResultSet rs = stmt.executeQuery();
       
       if(rs.next()) {
+         // System.out.println(rs.getBigDecimal(1).toString() + " " + rs.getBigDecimal(2).toString() + " " + rs.getString(3));
          return Instrument.makeFuture(symbol, rs.getBigDecimal(1), rs.getBigDecimal(2), rs.getString(3));
       }
       
@@ -150,6 +153,7 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       
       Connection con = DriverManager.getConnection(config.getProperty("db.url"));
       String table = config.getProperty("instruments.variations.table");
+      String originalProvider = config.getProperty("provider");
       
       if(table == null) {
          return null;
@@ -157,10 +161,11 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       
       String query = "SELECT symbol,factor,tick " +
                      "FROM " + table + " " +
-                     "WHERE original_symbol=? AND provider=?";
+                     "WHERE original_symbol=? AND original_provider=? AND provider=?";
       PreparedStatement stmt = con.prepareStatement(query);
       stmt.setString(1, symbol);
-      stmt.setString(2, provider);
+      stmt.setString(2, originalProvider);
+      stmt.setString(3, provider);
       ResultSet rs = stmt.executeQuery();
       
       if(rs.next()) {

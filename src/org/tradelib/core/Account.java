@@ -1,0 +1,192 @@
+package org.tradelib.core;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.TreeMap;
+
+public class Account {
+   public static final String DEFAULT_NAME = "DefaultAccount";
+   
+   private String name;
+   
+   private class Summary {
+      LocalDateTime ts;
+      double addition = 0.0;
+      double withdrawal = 0.0;
+      double interest = 0.0;
+      double realizedPnl = 0.0;
+      double unrealizedPnl = 0.0;
+      double grossPnl = 0.0;
+      double txnFees = 0.0;
+      double netPnl = 0.0;
+      double advisoryFees = 0.0;
+      double netPerformance = 0.0;
+      double endEq = Double.NaN;
+      
+      public Summary(LocalDateTime ts, double endEq) {
+         this.ts = ts;
+         this.endEq = endEq;
+      }
+      
+      public Summary(LocalDateTime ts) {
+         this.ts = ts;
+      }
+   }
+   
+   private LocalDateTime endEquityTimestamp;
+   
+   private TreeMap<LocalDateTime, Summary> summaries;
+   
+   private class PortfolioData {
+      Portfolio portfolio;
+      TimeSeries<Double> summary;
+      
+      public PortfolioData(String name, LocalDateTime startDate) {
+         portfolio = new Portfolio(name);
+         
+         summary = new TimeSeries<Double>(
+                           "LongValue", "ShortValue", "NetValue",
+                           "GrossValue", "RealizedPnL", "UnrealizedPnL",
+                           "GrossPnL", "TxnFees", "NetPnL");
+         summary.add(startDate, 0.0);
+      }
+   }
+   
+   private HashMap<String, PortfolioData> portfolios;
+   
+   public Account(String name, LocalDateTime startDate, double initialEquity, String ...portfolioNames) {
+      this.name = name;
+      
+      portfolios = new HashMap<String, PortfolioData>();
+      if(portfolioNames.length > 0) {
+         for(int ii = 0; ii < portfolioNames.length; ++ii) {
+            portfolios.put(portfolioNames[ii], new PortfolioData(portfolioNames[ii], startDate));
+         }
+      } else {
+         portfolios.put(Portfolio.DEFAULT_NAME, new PortfolioData(Portfolio.DEFAULT_NAME, startDate));
+      }
+      
+      summaries = new TreeMap<LocalDateTime, Summary>();
+      summaries.put(startDate, new Summary(startDate, initialEquity));
+      
+      endEquityTimestamp = startDate;
+   }
+   
+   public Account(LocalDateTime startDate, double initialEquity, String ...portfolioNames) {
+      this(DEFAULT_NAME, startDate, initialEquity, portfolioNames);
+   }
+   
+   public Account() {
+      this(DEFAULT_NAME, LocalDateTime.MIN, 0.0, Portfolio.DEFAULT_NAME);
+   }
+   
+   public void add(LocalDateTime ts, double amount) {
+      Summary ss = summaries.get(ts);
+      if(ss == null) ss = new Summary(ts);
+      ss.addition += amount;
+      summaries.put(ts, ss);
+   }
+   
+   public void withdraw(LocalDateTime ts, double amount) {
+      Summary ss = summaries.get(ts);
+      if(ss == null) ss = new Summary(ts);
+      ss.withdrawal += amount;
+      summaries.put(ts, ss);
+   }
+   
+   public void addInterest(LocalDateTime ts, double amount) {
+      Summary ss = summaries.get(ts);
+      if(ss == null) ss = new Summary(ts);
+      ss.interest += amount;
+      ss.netPerformance += amount;
+      summaries.put(ts, ss);
+   }
+   
+   public void addAdvisoryFee(LocalDateTime ts, double amount) {
+      Summary ss = summaries.get(ts);
+      if(ss == null) ss = new Summary(ts);
+      ss.advisoryFees += amount;
+      ss.netPerformance += amount;
+      summaries.put(ts, ss);
+   }
+   
+   public void addTransaction(String portfolio, Instrument instrument, LocalDateTime timeStamp, long quantity, double price, double fees) {
+      portfolios.get(portfolio).portfolio.addTransaction(instrument, timeStamp, quantity, price, fees);
+   }
+   
+   public void addTransaction(Instrument instrument, LocalDateTime timeStamp, long quantity, double price, double fees) {
+      PortfolioData pd = portfolios.get(Portfolio.DEFAULT_NAME);
+      if(pd == null) {
+         pd = new PortfolioData(Portfolio.DEFAULT_NAME, timeStamp.minusDays(1));
+      }
+      pd.portfolio.addTransaction(instrument, timeStamp, quantity, price, fees);
+   }
+   
+   public void updatePortfolio(String portfolio, Instrument instrument, TimeSeries<Double> prices) {
+      portfolios.get(portfolio).portfolio.updatePnl(instrument, prices);
+   }
+   
+   public void updatePortfolio(Instrument instrument, TimeSeries<Double> prices) {
+      PortfolioData pd = portfolios.get(Portfolio.DEFAULT_NAME);
+      if(pd == null) {
+         pd = new PortfolioData(Portfolio.DEFAULT_NAME, prices.getTimestamp(0).minusDays(1));
+      }
+      pd.portfolio.updatePnl(instrument, prices);
+   }
+   
+   public void mark(String portfolio, Instrument instrument, LocalDateTime ts, double price) {
+      // Mark the portfolio
+      List<PositionPnl> posPnls = portfolios.get(portfolio).portfolio.mark(instrument, ts, price);
+      
+      if(posPnls != null) {
+         // Mark the account with the updates generated by the portfolio
+         for(PositionPnl posPnl : posPnls) {
+            Summary ss = summaries.get(posPnl.ts);
+            if(ss == null) ss = new Summary(posPnl.ts);
+            ss.realizedPnl += posPnl.realizedPnl;
+            ss.unrealizedPnl += posPnl.unrealizedPnl;
+            ss.grossPnl += posPnl.grossPnl;
+            ss.netPnl += posPnl.netPnl;
+            ss.netPerformance += posPnl.netPnl;
+            ss.txnFees += posPnl.fees;
+            summaries.put(ss.ts, ss);
+         }
+      }
+   }
+   
+   public void mark(Instrument instrument, LocalDateTime ts, double price) {
+      mark(Portfolio.DEFAULT_NAME, instrument, ts, price);
+   }
+   
+   public void updateEndEquity(LocalDateTime to) {
+      double prevEndEquity = Double.NaN;
+      for(Summary ss : summaries.values()) {
+         if(ss.ts.isAfter(to)) {
+            break;
+         } else if(ss.ts.isAfter(endEquityTimestamp)) {
+            if(Double.isNaN(prevEndEquity)) {
+               throw new IllegalStateException("prevEndEquity not set!");
+            }
+            ss.endEq = prevEndEquity + ss.addition + ss.withdrawal + ss.netPerformance;
+         }
+         prevEndEquity = ss.endEq;
+      }
+   }
+   
+   public double getEndEquity() {
+      return summaries.lastEntry().getValue().endEq;
+   }
+   
+   public double getEndEquity(LocalDateTime upTo) {
+      return summaries.floorEntry(upTo).getValue().endEq;
+   }
+   
+   public PositionPnl getPositionPnl(String portfolio, Instrument instrument) {
+      return portfolios.get(portfolio).portfolio.getPositionPnl(instrument);
+   }
+   
+   public PositionPnl getPositionPnl(Instrument instrument) {
+      return portfolios.get(Portfolio.DEFAULT_NAME).portfolio.getPositionPnl(instrument);
+   }
+}

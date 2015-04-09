@@ -25,7 +25,7 @@ public class BarHistory {
       
       @Override
       public double get(int id) {
-         return (double)list.get(list.size() - id -1);
+         return (Double)list.get(list.size() - id -1);
       }
    }
    

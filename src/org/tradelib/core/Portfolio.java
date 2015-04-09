@@ -3,12 +3,17 @@ package org.tradelib.core;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.logging.Logger;
 
+import com.google.common.collect.TreeBasedTable;
+
 public class Portfolio {
-   public static final String DEFAULT_NAME = "default";
+   public static final String DEFAULT_NAME = "DefaultPortfolio";
    
    private static final Logger logger = Logger.getLogger(Portfolio.class.getName());
 
@@ -51,95 +56,79 @@ public class Portfolio {
       }
    }
    
-   private class PositionPnl {
-      public LocalDateTime ts;
-      public double positionQuantity;
-      public double positionValue;
-      public double positionAverageCost;
-      public double transactionValue;
-      public double realizedPnl;
-      public double unrealizedPnl;
-      public double grossPnl;
-      public double netPnl;
-      public double fees;
-      
-      public PositionPnl(LocalDateTime ldt) {
-         positionQuantity = 0.0;
-         positionValue = 0.0;
-         positionAverageCost = 0.0;
-         transactionValue = 0.0;
-         realizedPnl = 0.0;
-         unrealizedPnl = 0.0;
-         grossPnl = 0.0;
-         netPnl = 0.0;
-         fees = 0.0;
-         
-         ts = ldt;
-      }
-      
-      public PositionPnl() {
-         this(LocalDateTime.MIN);
-      }
-   }
-   
    // 'Long.Value', 'Short.Value', 'Net.Value', 'Gross.Value', 'Period.Realized.PL', 'Period.Unrealized.PL', 'Gross.Trading.PL', 'Txn.Fees', 'Net.Trading.PL'
    private class Summary {
       public LocalDateTime ts; // the timestamp for this summary
-      public double longValue;
-      public double shortValue;
-      public double netValue;
-      public double grossValue;
-      public double txnFees;
-      public double realizedPnl; // period realized PnL
-      public double unrealizedPnl; // period unrealized PnL
-      public double grossPnl; // gross trading PnL
-      public double netPnl; // net trading PnL
+      public double longValue = 0.0;
+      public double shortValue = 0.0;
+      public double netValue = 0.0;
+      public double grossValue = 0.0;
+      public double txnFees = 0.0;
+      public double realizedPnl = 0.0; // period realized PnL
+      public double unrealizedPnl = 0.0; // period unrealized PnL
+      public double grossPnl = 0.0; // gross trading PnL
+      public double netPnl = 0.0; // net trading PnL
+      
+      public Summary(LocalDateTime ts) {
+         this.ts = ts;
+      }
    }
    
-   private class InstrumentCB {
+   private class InstrumentData {
       public ArrayList<Transaction> transactions;
       public ArrayList<PositionPnl> positionPnls;
-      public ArrayList<Summary> summaries;
+      public TreeMap<LocalDateTime, Summary> summaries;
       
-      public InstrumentCB() {
+      // The last processed transaction
+      public int lastTxn;
+      
+      // The last prices seen for this instrument. Needed to maintain
+      // the running position PnL. A price must be recorded before a
+      // transaction occurs.
+      public double lastPrice;
+      
+      public InstrumentData() {
          transactions = new ArrayList<Transaction>();
          transactions.add(new Transaction(LocalDateTime.MIN));
          
-         positionPnls = new ArrayList<Portfolio.PositionPnl>();
+         lastTxn = 0;
+         lastPrice = Double.NaN;
+         
+         positionPnls = new ArrayList<PositionPnl>();
          positionPnls.add(new PositionPnl());
          
-         summaries = new ArrayList<Summary>();
+         summaries = new TreeMap<LocalDateTime, Summary>();
       }
    }
    
    String name_;
-   HashMap<String, InstrumentCB> instrumentMap;
+   HashMap<String, InstrumentData> instrumentMap;
    
    public Portfolio(String name) {
       this.name_ = name;
-      this.instrumentMap = new HashMap<String, InstrumentCB>();
+      this.instrumentMap = new HashMap<String, InstrumentData>();
    }
    
    public Portfolio() {
       this.name_ = DEFAULT_NAME;
-      this.instrumentMap = new HashMap<String, InstrumentCB>();
+      this.instrumentMap = new HashMap<String, InstrumentData>();
    }
    
    public void addInstrument(Instrument i) {
-      InstrumentCB icb = instrumentMap.get(i.getSymbol());
+      InstrumentData icb = instrumentMap.get(i.getSymbol());
       if(icb == null) {
-         instrumentMap.put(i.getSymbol(), new InstrumentCB());
+         instrumentMap.put(i.getSymbol(), new InstrumentData());
       }
    }
    
    public void addTransaction(Instrument i, LocalDateTime ldt, long q, double p, double f) {
-      InstrumentCB icb = instrumentMap.get(i.getSymbol());
-      if(icb == null) {
-         icb = new InstrumentCB();
-         instrumentMap.put(i.getSymbol(), icb);
+      InstrumentData id = instrumentMap.get(i.getSymbol());
+      if(id == null) {
+         id = new InstrumentData();
+         instrumentMap.put(i.getSymbol(), id);
       }
       
-      ArrayList<Transaction> instrumentTransactions = icb.transactions;
+      ArrayList<Transaction> instrumentTransactions = id.transactions;
       
       assert ldt.isAfter(instrumentTransactions.get(instrumentTransactions.size()-1).ts) : "Transactions must be added in chronological order!";
       
@@ -199,11 +188,142 @@ public class Portfolio {
       addTransaction(e.getInstrument(), e.getDateTime(), e.getQuantity(), e.getPrice(), e.getFees());
    }
    
-   public void updatePnl(Instrument instrument, TimeSeries<Double> prices) {
-      InstrumentCB icb = instrumentMap.get(instrument.getSymbol());
-      List<Transaction> transactions = icb.transactions;
+   public void markSummary(TreeMap<LocalDateTime, Summary> summaries, PositionPnl posPnl) {
+      Summary ss = summaries.get(posPnl.ts);
+      if(ss == null) {
+         ss = new Summary(posPnl.ts);
+      }
       
-      PositionPnl lastPnl = icb.positionPnls.get(icb.positionPnls.size() - 1);
+      ss.grossValue += Math.abs(posPnl.positionValue);
+      ss.netValue += posPnl.positionValue;
+      if(posPnl.positionValue < 0.0) ss.longValue += posPnl.positionValue;
+      else if(posPnl.positionValue > 0.0) ss.shortValue += posPnl.positionValue;
+      
+      ss.realizedPnl += posPnl.realizedPnl;
+      ss.unrealizedPnl += posPnl.unrealizedPnl;
+      ss.grossPnl += posPnl.grossPnl;
+      ss.netPnl += posPnl.netPnl;
+      ss.txnFees += posPnl.fees;
+      
+      summaries.put(posPnl.ts, ss);
+   }
+
+   public List<PositionPnl> mark(Instrument instrument, LocalDateTime ts, double price) {
+      InstrumentData idata = instrumentMap.get(instrument.getSymbol());
+      
+      if(idata == null) {
+         idata = new InstrumentData();
+         instrumentMap.put(instrument.getSymbol(), idata);
+      }
+      
+      if(idata.transactions.size() == 1) {
+         // No real transactions, record the price and return
+         idata.lastPrice = price;
+         return null;
+      }
+      
+      if(Double.isNaN(idata.lastPrice)) {
+         throw new IllegalStateException(
+               "Portfolio::mark must be called with a valid price before recording a transaction!");
+      }
+      
+      ArrayList<PositionPnl> result = new ArrayList<PositionPnl>();
+      
+      List<Transaction> txns = idata.transactions;
+      
+      PositionPnl lastPnl = idata.positionPnls.get(idata.positionPnls.size() - 1);
+      
+      // Only the last transaction can have the same timestamp as the price.
+      int txnId = idata.lastTxn + 1;
+      while(txnId < txns.size() && idata.transactions.get(txnId).ts.isBefore(ts)) {
+         Transaction txn = txns.get(txnId);
+         
+         PositionPnl posPnl = new PositionPnl(txn.ts);
+         
+         posPnl.positionQuantity = txn.positionQuantity;
+         posPnl.positionAverageCost = txn.positionAverageCost;
+         posPnl.transactionValue = txn.value;
+         posPnl.fees = txn.fees;
+         // Use the previous price
+         posPnl.positionValue = instrument.getBpv() * posPnl.positionQuantity * idata.lastPrice;
+         posPnl.grossPnl = posPnl.positionValue - lastPnl.positionValue - posPnl.transactionValue;
+         posPnl.realizedPnl = txn.grossPnl;
+         posPnl.unrealizedPnl = posPnl.grossPnl - txn.grossPnl;
+         posPnl.netPnl = posPnl.grossPnl + txn.fees;
+
+         idata.positionPnls.add(posPnl);
+         result.add(posPnl);
+         lastPnl = posPnl;
+         
+         markSummary(idata.summaries, posPnl);
+         
+         ++txnId;
+      }
+      
+      // Process the price
+      if(txnId < txns.size() && idata.transactions.get(txnId).ts.equals(ts)) {
+         // A transaction with a same timestamp as the price
+         Transaction txn = txns.get(txnId);
+         
+         PositionPnl posPnl = new PositionPnl(txn.ts);
+         
+         // The current time is both in the price list and in the transaction list
+         posPnl.positionQuantity = txn.positionQuantity;
+         posPnl.positionAverageCost = txn.positionAverageCost;
+         posPnl.transactionValue = txn.value;
+         posPnl.fees = txn.fees;
+         posPnl.positionValue = instrument.getBpv() * posPnl.positionQuantity * price;
+         posPnl.grossPnl = posPnl.positionValue - lastPnl.positionValue - posPnl.transactionValue;
+         posPnl.realizedPnl = txn.grossPnl;
+         posPnl.unrealizedPnl = posPnl.grossPnl - txn.grossPnl;
+         posPnl.netPnl = posPnl.grossPnl + txn.fees;
+
+         idata.positionPnls.add(posPnl);
+         result.add(posPnl);
+         lastPnl = posPnl;
+         
+         markSummary(idata.summaries, posPnl);
+         
+         ++txnId;
+      } else {
+         // Create an entry based on the price itself
+         PositionPnl posPnl = new PositionPnl(ts);
+         
+         // No position change, only mark for the price
+         posPnl.positionQuantity = lastPnl.positionQuantity;
+         posPnl.positionAverageCost = lastPnl.positionAverageCost;
+         posPnl.transactionValue = 0.0;
+         posPnl.fees = 0.0;
+         posPnl.positionValue = instrument.getBpv() * posPnl.positionQuantity * price;
+         posPnl.grossPnl = posPnl.positionValue - lastPnl.positionValue;
+         posPnl.realizedPnl = 0.0;
+         posPnl.unrealizedPnl = posPnl.grossPnl;
+         posPnl.netPnl = posPnl.grossPnl;
+
+         idata.positionPnls.add(posPnl);
+         result.add(posPnl);
+         lastPnl = posPnl;
+         
+         markSummary(idata.summaries, posPnl);
+      }
+      
+      // Update the price
+      idata.lastPrice = price;
+      
+      idata.lastTxn = txnId - 1;
+      
+      // Sometimes we split transactions adding a nanosecond to the price. Thus,
+      // we may have a situation where there are transactions left. We will process
+      // them next time (alternatively, we may want to continue here).
+      
+      return result;
+   }
+   
+   public void updatePnl(Instrument instrument, TimeSeries<Double> prices) {
+      InstrumentData id = instrumentMap.get(instrument.getSymbol());
+      List<Transaction> transactions = id.transactions;
+      
+      PositionPnl lastPnl = id.positionPnls.get(id.positionPnls.size() - 1);
       
       // We only process prices after the last PnL
       int priceId = 0;
@@ -237,7 +357,7 @@ public class Portfolio {
             ppnl.unrealizedPnl = ppnl.grossPnl - txn.grossPnl;
             ppnl.netPnl = ppnl.grossPnl + txn.fees;
 
-            icb.positionPnls.add(ppnl);
+            id.positionPnls.add(ppnl);
             lastPnl = ppnl;
             
             ++priceId;
@@ -259,7 +379,7 @@ public class Portfolio {
             ppnl.unrealizedPnl = ppnl.grossPnl;
             ppnl.netPnl = ppnl.grossPnl;
 
-            icb.positionPnls.add(ppnl);
+            id.positionPnls.add(ppnl);
             lastPnl = ppnl;
             
             ++priceId;
@@ -280,7 +400,7 @@ public class Portfolio {
             ppnl.unrealizedPnl = ppnl.grossPnl - txn.grossPnl;
             ppnl.netPnl = ppnl.grossPnl + txn.fees;
 
-            icb.positionPnls.add(ppnl);
+            id.positionPnls.add(ppnl);
             lastPnl = ppnl;
             
             ++txnId;
@@ -375,6 +495,11 @@ public class Portfolio {
       return pnl;
    }
    
+   public PositionPnl getPositionPnl(Instrument instrument) {
+      InstrumentData id = instrumentMap.get(instrument.getSymbol());
+      return id.positionPnls.get(id.positionPnls.size() - 1);
+   }
+   
    /**
     * @brief Computes the PnL for the current position
     *
@@ -420,12 +545,85 @@ public class Portfolio {
     * @param fees The transaction fees.
     */
    public void closePosition(Instrument instrument, LocalDateTime ldt, double price, double fees) {
-      InstrumentCB icb = instrumentMap.get(instrument.getSymbol());
+      InstrumentData icb = instrumentMap.get(instrument.getSymbol());
       if(icb == null) return;
       ArrayList<Transaction> instrumentTransactions = icb.transactions;
       if(instrumentTransactions == null || instrumentTransactions.size() <= 1) return;
       Transaction transaction = instrumentTransactions.get(instrumentTransactions.size()-1);
       if(transaction.quantity != 0) addTransaction(instrument, ldt, -transaction.quantity, price, fees);
+   }
+   
+   public TreeBasedTable<LocalDateTime, String, Double> summarize() {
+      TreeBasedTable<LocalDateTime, String, Double> summary = TreeBasedTable.create();
+      for(HashMap.Entry<String, InstrumentData> ee : instrumentMap.entrySet()) {
+         for(PositionPnl pp : ee.getValue().positionPnls) {
+            // Update Gross.Value
+            Double grossValue = summary.get(pp.ts, "Gross.Value");
+            if(grossValue == null) {
+               summary.put(pp.ts, "Gross.Value", Math.abs(pp.positionValue));
+            } else {
+               summary.put(pp.ts, "Gross.Value", grossValue + Math.abs(pp.positionValue));
+            }
+            
+            // Update Net.Value
+            Double netValue = summary.get(pp.ts, "Net.Value");
+            if(netValue == null) {
+               summary.put(pp.ts, "Net.Value", pp.positionValue);
+            } else {
+               summary.put(pp.ts, "Net.Value", netValue + pp.positionValue);
+            }
+            
+            // Update Long.Value
+            if(pp.positionValue > 0.0) {
+               Double longValue = summary.get(pp.ts, "Long.Value");
+               if(longValue == null) {
+                  summary.put(pp.ts, "Long.Value", pp.positionValue);
+               } else {
+                  summary.put(pp.ts, "Long.Value", longValue + pp.positionValue);
+               }
+            }
+            
+            // Update Short.Value
+            if(pp.positionValue < 0.0) {
+               Double shortValue = summary.get(pp.ts, "Short.Value");
+               if(shortValue == null) {
+                  summary.put(pp.ts, "Short.Value", pp.positionValue);
+               } else {
+                  summary.put(pp.ts, "Short.Value", shortValue + pp.positionValue);
+               }
+            }
+            
+            // 'Long.Value', 'Short.Value', 'Net.Value', 'Gross.Value', 'Period.Realized.PL', 'Period.Unrealized.PL', 'Gross.Trading.PL', 'Txn.Fees', 'Net.Trading.PL'
+            for(String column : Arrays.asList("Period.Realized.PL", "Period.Unrealized.PL", "Gross.Trading.PL", "Txn.Fees", "Net.Trading.PL")) {
+               double value = 0.0;
+               switch(column) {
+               case "Period.Realized.PL":
+                  value = pp.realizedPnl;
+                  break;
+               case "Period.Unrealized.PL":
+                  value = pp.unrealizedPnl;
+                  break;
+               case "Gross.Trading.PL":
+                  value = pp.grossPnl;
+                  break;
+               case "Txn.Fees":
+                  value = pp.fees;
+                  break;
+               case "Net.Trading.PL":
+                  value = pp.netPnl;
+                  break;
+               }
+               Double summaryValue = summary.get(pp.ts, column);
+               if(summaryValue == null) {
+                  summary.put(pp.ts, column, value);
+               } else {
+                  summary.put(pp.ts, column, summaryValue + value);
+               }
+            }
+         }
+      }
+      
+      return summary;
    }
    
    public class TradingResults {
@@ -594,7 +792,7 @@ public class Portfolio {
    public List<Trade> getTrades(Instrument instrument) {
       List<Trade> list = new ArrayList<Trade>();
 
-      InstrumentCB icb = instrumentMap.get(instrument.getSymbol());
+      InstrumentData icb = instrumentMap.get(instrument.getSymbol());
       if(icb == null) return list;
       
       ArrayList<Transaction> transactions = icb.transactions;

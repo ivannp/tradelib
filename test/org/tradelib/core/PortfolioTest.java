@@ -59,7 +59,7 @@ public class PortfolioTest {
       portfolio.addTransaction(esInstrument, LocalDateTime.of(2014, 2, 7, 17, 0, 0), -2, 1786.50, contractFees*2.0);
       portfolio.addTransaction(esInstrument, LocalDateTime.of(2014, 2, 14, 17, 0, 0), 1, 1828.00, contractFees*1.0);
       
-      TimeSeries<Double> pnl = portfolio.getPnl(esInstrument, es.subset("2013-12-31", "2014-02-18").getData("close"));
+      TimeSeries<Double> pnl = portfolio.getPnl(esInstrument, es.subset("2013-12-31", "2014-02-18").columns("close"));
       for(int ii = 0; ii < pnl.size(); ++ii) {
          System.out.println(pnl.getTimestamp(ii).format(DateTimeFormatter.ISO_DATE_TIME) + " " + String.valueOf(pnl.get(ii)));
       }
@@ -115,6 +115,6 @@ public class PortfolioTest {
       portfolio.addTransaction(esInstrument, LocalDateTime.of(2014, 2, 7, 17, 0, 0), -2, 1786.50, contractFees*2.0);
       portfolio.addTransaction(esInstrument, LocalDateTime.of(2014, 2, 14, 17, 0, 0), 1, 1828.00, contractFees*1.0);
       
-      portfolio.updatePnl(esInstrument, es.subset("2013-12-31", "2014-02-18").getData("close"));
+      portfolio.updatePnl(esInstrument, es.subset("2013-12-31", "2014-02-18").columns("close"));
    }
 }
