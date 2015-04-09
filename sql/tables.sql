@@ -1,0 +1,249 @@
+# SHOW WARNINGS;
+
+# DROP TABLE IF EXISTS strategies;
+CREATE TABLE IF NOT EXISTS strategies(
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	name varchar(20) not null,
+    UNIQUE KEY strategies_unique (name))
+ENGINE InnoDB;
+
+# DROP TABLE IF EXISTS strategy_history;
+CREATE TABLE IF NOT EXISTS strategy_history(
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	symbol varchar(10) not null,
+	strategy_id INTEGER NOT NULL,
+	ts DATE NOT NULL,
+	live_price DECIMAL(18,8),
+	live_weight DECIMAL(18,8),
+	live_position INTEGER,
+	established BOOLEAN,
+	ma_order TINYINT DEFAULT NULL,
+	price DECIMAL(18,8),
+	weight DECIMAL(18,8),
+	position INTEGER,
+	pnl DECIMAL(18,8),
+	equity DECIMAL(18,8),
+    INDEX sh_i1 (symbol, ts),
+    UNIQUE KEY sh_unique (symbol, strategy_id, ts))
+ENGINE InnoDB;
+
+SELECT * FROM strategies;
+
+# DROP TABLE IF EXISTS key_value;
+CREATE TABLE IF NOT EXISTS key_value(
+	k VARCHAR(255) NOT NULL,
+	v VARCHAR(255) NOT NULL)
+ENGINE InnoDB;
+
+CREATE TABLE IF NOT EXISTS yahoo_daily(
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	symbol varchar(10) not null,
+	ts DATETIME NOT NULL,
+	open DECIMAL(18,8),
+	high DECIMAL(18,8),
+	low DECIMAL(18,8),
+	close DECIMAL(18,8),
+	adjusted DECIMAL(18,8),
+	volume BIGINT,
+    UNIQUE KEY yd_unique (symbol, ts))
+ENGINE InnoDB;
+
+INSERT INTO strategies values (1, 'ARMA/GARCH');
+
+CREATE TABLE IF NOT EXISTS executions(
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	strategy_id INTEGER NOT NULL,
+	symbol varchar(10) NOT NULL,
+	ts DATETIME NOT NULL,
+	price DOUBLE,
+	quantity BIGINT NOT NULL,
+	signal VARCHAR(64))
+ENGINE InnoDB;
+
+# DROP TABLE IF EXISTS trade_stats;
+# DROP TABLE IF EXISTS trades;
+CREATE TABLE IF NOT EXISTS trades(
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	strategy_id INTEGER NOT NULL,
+	symbol VARCHAR(10) NOT NULL,
+	start DATETIME NOT NULL,
+	end DATETIME NOT NULL,
+	initial_position BIGINT NOT NULL,
+	max_position BIGINT NOT NULL,
+	num_transactions BIGINT NOT NULL,
+	pnl DOUBLE NOT NULL,
+	pct_pnl DOUBLE NOT NULL,
+	tick_pnl DOUBLE NOT NULL,
+	fees DECIMAL(18,8) NOT NULL)
+ENGINE InnoDB;
+
+CREATE TABLE IF NOT EXISTS pnls(
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	strategy_id INTEGER NOT NULL,
+	symbol VARCHAR(10) NOT NULL,
+	ts DATETIME NOT NULL,
+	pnl DOUBLE NOT NULL,
+    UNIQUE KEY pnls_unique (strategy_id, symbol, ts))
+ENGINE InnoDB;
+
+CREATE TABLE IF NOT EXISTS trade_summaries(
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	strategy_id INTEGER NOT NULL,
+	symbol VARCHAR(10) NOT NULL,
+	type VARCHAR(8) NOT NULL,
+	num_trades BIGINT NOT NULL,
+    gross_profits DOUBLE DEFAULT 0.0,
+    gross_losses DOUBLE DEFAULT 0.0,
+    profit_factor DOUBLE DEFAULT 0.0,
+    average_daily_pnl DOUBLE DEFAULT 0.0,
+    daily_pnl_stddev DOUBLE DEFAULT 0.0,
+    sharpe_ratio DOUBLE DEFAULT 0.0,
+    average_trade_pnl DOUBLE DEFAULT 0.0,
+    trade_pnl_stddev DOUBLE DEFAULT 0.0,
+    pct_positive DOUBLE DEFAULT 0.0,
+    pct_negative DOUBLE DEFAULT 0.0,
+    max_win DOUBLE DEFAULT 0.0,
+    max_loss DOUBLE DEFAULT 0.0,
+    average_win DOUBLE DEFAULT 0.0,
+    average_loss DOUBLE DEFAULT 0.0,
+    average_win_loss DOUBLE DEFAULT 0.0,
+    equity_min DOUBLE DEFAULT 0.0,
+    equity_max DOUBLE DEFAULT 0.0,
+    max_drawdown DOUBLE DEFAULT 0.0,
+    UNIQUE KEY trade_summaries_unique (strategy_id, symbol, type))
+ENGINE InnoDB;
+
+CREATE TABLE IF NOT EXISTS strategy_positions (
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	strategy_id INTEGER NOT NULL,
+	symbol VARCHAR(10) NOT NULL,
+	ts DATETIME NOT NULL,
+   position DOUBLE NOT NULL,
+   last_close DECIMAL(18,8),
+   last_ts DATETIME,
+	details VARCHAR(256),
+    UNIQUE INDEX strategy_positions_unique (strategy_id, symbol, ts))
+ENGINE InnoDB;
+
+COMMIT;
+
+# DROP TABLE IF EXISTS instrument;
+CREATE TABLE IF NOT EXISTS instrument (
+   id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   symbol CHAR(2) NOT NULL,
+   bpv DECIMAL(18,8) NOT NULL,
+   tick DECIMAL(18,8) NOT NULL,
+   min_move DECIMAL(18,8) NOT NULL,
+   comment VARCHAR(64),
+   exchange VARCHAR(32),
+   contracts CHAR(12),
+   roll_day TINYINT,
+   roll_month TINYINT,
+   bytes TINYINT,
+   decimal_digits TINYINT,
+   current_contract DATE,
+   next_contract DATE,
+   rollover_date DATE,
+   trading_days INTEGER,
+   days INTEGER,
+   UNIQUE KEY instruemnt_unique (symbol))
+ENGINE = InnoDB;
+
+# DROP TABLE IF EXISTS instrument_variation;
+CREATE TABLE IF NOT EXISTS instrument_variation (
+   id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   provider VARCHAR(64) NOT NULL,
+   original_symbol CHAR(2) NOT NULL,
+   symbol VARCHAR(16) NOT NULL,
+   factor DECIMAL(18,8) NOT NULL,
+   tick DECIMAL(18,8) NOT NULL,
+   UNIQUE KEY iv_unique1 (provider, symbol),
+   UNIQUE KEY iv_unique2 (provider, original_symbol))
+ENGINE = InnoDB;
+
+INSERT INTO instrument VALUES(1,'AN',1000.0,0.01,10.0,'Australian Dollar','CME','HHHMMMUUUZZZ',8,0,2,2,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(2,'BC',1000.0,0.01,10.0,'Brent Crude Oil','ICE','FGHJKMNQUVXZ',11,1,3,2,NULL,NULL,NULL,6,10);
+INSERT INTO instrument VALUES(3,'BG',100.0,0.25,25.0,'Brent Gasoil','ICE','FGHJKMNQUVXZ',11,1,3,2,NULL,NULL,NULL,6,10);
+INSERT INTO instrument VALUES(4,'BN',625.0,0.01,6.25,'British Pound','CME','HHHMMMUUUZZZ',8,0,3,2,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(5,'CC',10.0,1.0,10.0,'Cocoa','CME','HHHKKNNUUZZZ',9,1,2,0,NULL,NULL,NULL,26,38);
+INSERT INTO instrument VALUES(6,'CN',1000.0,0.01,10.0,'Canadian Dollar','CME','HHHMMMUUUZZZ',8,0,2,2,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(7,'CT',500.0,0.01,5.0,'Cotton','NYBOT','HHHKKNNZZZZZ',15,1,2,2,NULL,NULL,NULL,31,45);
+INSERT INTO instrument VALUES(8,'DA',2000.0,0.01,20.0,'Milk','CME','FGHJKMNQUVXZ',27,1,2,2,NULL,NULL,NULL,17,25);
+INSERT INTO instrument VALUES(9,'DX',1000.0,0.005,5.0,'US Dollar Index','NYBOT','HHHMMMUUUZZZ',8,0,3,3,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(10,'EN',20.0,0.25,5.0,'E-mini Nasdaq','CME','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(11,'ER',100.0,0.1,10.0,'E-mini Russell 2000','ICE','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(12,'ES',50.0,0.25,12.5,'E-mini S&P 500','CME','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(13,'FB',1000.0,0.0078125,7.8125,'5-Year US T-Note','CBOT','HHHMMMUUUZZZ',24,1,4,6,NULL,NULL,NULL,37,53);
+INSERT INTO instrument VALUES(14,'FN',1250.0,0.01,12.5,'Euro','CME','HHHMMMUUUZZZ',8,0,3,3,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(15,'JN',1250.0,0.01,12.5,'Japanese Yen','CME','HHHMMMUUUZZZ',8,0,2,2,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(16,'JO',150.0,0.05,7.5,'Orange Juice','ICE','FHHKKNNUUXXF',25,1,2,2,NULL,NULL,NULL,38,54);
+INSERT INTO instrument VALUES(17,'KC',375.0,0.05,18.75,'Coffee','ICE','HHHKKNNUUZZZ',11,1,2,2,NULL,NULL,NULL,28,40);
+INSERT INTO instrument VALUES(18,'KW',50.0,0.25,12.5,'KC Wheat','CME','HHHKKNNUUZZZ',22,1,3,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(19,'LB',110.0,0.1,11.0,'Lumber','CME','FHHKKNNUUXXF',1,0,2,1,NULL,NULL,NULL,41,59);
+INSERT INTO instrument VALUES(20,'EC',2500.0,0.0025,6.25,'Eurodollar','CME','HHHMMMUUUZZZ',22,1,3,4,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(21,'MD',100.0,0.1,10.0,'E-mini S&P 400','CME','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(22,'MP',500000.0,2.5e-05,12.5,'Mexican Peso','CME','HHHMMMUUUZZZ',8,0,3,6,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(23,'MW',50.0,0.25,12.5,'Wheat (Minneapolis)','MGE','HHHKKNNUUZZZ',22,1,3,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(24,'ND',100.0,0.25,25.0,'Nasdaq 100','CME','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(25,'NK',5.0,5.0,25.0,'Nikkei','CME','HHHMMMUUUZZZ',3,0,3,0,NULL,NULL,NULL,42,60);
+INSERT INTO instrument VALUES(26,'RL',500.0,0.05,25.0,'Russell 2000','CME','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(27,'SB',1120.0,0.01,11.2,'Sugar','ICE','HHHKKNNVVVHH',22,1,2,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(28,'SN',1250.0,0.01,12.5,'Swiss Franc','CME','HHHMMMUUUZZZ',8,0,2,2,NULL,NULL,NULL,46,66);
+INSERT INTO instrument VALUES(29,'SC',250.0,0.1,25.0,'S&P 500','CME','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(30,'TU',2000.0,0.0078125,15.63,'2-Year US T-Note','CBOT','HHHMMMUUUZZZ',24,1,4,7,NULL,NULL,NULL,37,53);
+INSERT INTO instrument VALUES(31,'TY',1000.0,0.015625,15.63,'10-Year US T-Note','CBOT','HHHMMMUUUZZZ',24,1,4,6,NULL,NULL,NULL,37,53);
+INSERT INTO instrument VALUES(32,'US',1000.0,0.03125,31.25,'30-Year US T-Bond','CBOT','HHHMMMUUUZZZ',24,1,4,5,NULL,NULL,NULL,37,53);
+INSERT INTO instrument VALUES(33,'YM',5.0,1.0,5.0,'E-mini Dow Jones','CBOT','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(34,'ZD',25.0,1.0,25.0,'Dow Jones','CBOT','HHHMMMUUUZZZ',-13,0,3,2,NULL,NULL,NULL,49,69);
+INSERT INTO instrument VALUES(35,'ZG',100.0,0.1,10.0,'Gold','COMMEX','GGJJMMQQZZZZ',22,1,2,1,NULL,NULL,NULL,14,20);
+INSERT INTO instrument VALUES(36,'ZI',50.0,0.5,25.0,'Silver','COMMEX','HHHKKNNUUZZZ',22,1,2,1,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(37,'ZC',50.0,0.25,12.5,'Corn','CBOT','HHHKKNNUUZZZ',22,1,3,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(38,'ZS',50.0,0.25,12.5,'Soybeans','CBOT','FHHKKNNQXXXF',22,1,3,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(39,'ZL',600.0,0.01,6.0,'Soybean Oil','CBOT','FHHKKNNQZZZZ',22,1,2,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(40,'ZO',50.0,0.25,12.5,'Oats','CBOT','HHHKKNNUUZZZ',13,1,3,2,NULL,NULL,NULL,30,42);
+INSERT INTO instrument VALUES(41,'ZM',100.0,0.1,10.0,'Soybean Meal','CBOT','FHHKKNNQZZZZ',22,1,3,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(42,'ZR',20.0,0.5,10.0,'Rough Rice','CBOT','FHHKKNNUUXXF',22,1,3,1,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(43,'ZW',50.0,0.25,12.5,'Wheat','CBOT','HHHKKNNUUZZZ',22,1,3,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(44,'ZU',1000.0,0.01,10.0,'Crude Oil','NYMEX','FGHJKMNQUVXZ',11,1,2,2,NULL,NULL,NULL,6,10);
+INSERT INTO instrument VALUES(45,'ZB',420.0,0.01,4.2,'RBOB Gasoline','NYMEX','FGHJKMNQUVXZ',11,1,2,2,NULL,NULL,NULL,6,10);
+INSERT INTO instrument VALUES(46,'ZH',420.0,0.01,4.2,'Heating Oil','NYMEX','FGHJKMNQUVXZ',11,1,2,2,NULL,NULL,NULL,6,10);
+INSERT INTO instrument VALUES(47,'ZN',10000.0,0.001,10.0,'Natural Gas','NYMEX','FGHJKMNQUVXZ',18,1,3,3,NULL,NULL,NULL,11,17);
+INSERT INTO instrument VALUES(48,'ZK',250.0,0.05,12.5,'Copper','COMEX','HHHKKNNUUZZZ',22,1,2,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(49,'ZA',100.0,0.05,5.0,'Palladium','NYMEX','HHHMMMUUUZZZ',22,1,3,2,NULL,NULL,NULL,36,52);
+INSERT INTO instrument VALUES(50,'ZP',50.0,0.1,5.0,'Platinum','NYMEX','FJJJNNNVVVFF',22,1,2,1,NULL,NULL,NULL,56,80);
+INSERT INTO instrument VALUES(51,'ZF',500.0,0.025,12.5,'Feeder Cattle','CME','FHHKKQQQUVXF',5,0,2,2,NULL,NULL,NULL,1,3);
+INSERT INTO instrument VALUES(52,'ZT',400.0,0.025,10.0,'Live Cattle','CME','GGJJMMQQVVZZ',27,1,2,2,NULL,NULL,NULL,17,25);
+INSERT INTO instrument VALUES(53,'ZZ',400.0,0.025,10.0,'Lean Hogs','CME','GGJJMMNQVVZZ',27,1,2,2,NULL,NULL,NULL,17,25);
+
+INSERT INTO instrument_variation VALUES(1,'ib','FN','EUR',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(2,'ib','KW','KE',1.0,0.25);
+INSERT INTO instrument_variation VALUES(3,'ib','ZZ','HE',1.0,0.025);
+INSERT INTO instrument_variation VALUES(4,'ib','ZT','LE',1.0,0.025);
+INSERT INTO instrument_variation VALUES(5,'ib','ZF','GF',1.0,0.025);
+INSERT INTO instrument_variation VALUES(6,'ib','KC','KC',100.0,0.0005);
+INSERT INTO instrument_variation VALUES(7,'ib','CT','CT',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(8,'ib','JO','OJ',100.0,0.0005);
+INSERT INTO instrument_variation VALUES(9,'ib','SB','SB',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(10,'ib','ZK','HG',100.0,0.0005);
+INSERT INTO instrument_variation VALUES(11,'ib','ZI','SI',100.0,0.005);
+INSERT INTO instrument_variation VALUES(12,'ib','ZG','GC',1.0,0.1);
+INSERT INTO instrument_variation VALUES(13,'ib','ZA','PA',1.0,0.05);
+INSERT INTO instrument_variation VALUES(14,'ib','ZP','PL',1.0,0.1);
+INSERT INTO instrument_variation VALUES(15,'ib','ZU','CL',1.0,0.01);
+INSERT INTO instrument_variation VALUES(16,'ib','ZH','HO',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(17,'ib','ZB','RB',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(18,'ib','ZN','NG',1.0,0.001);
+INSERT INTO instrument_variation VALUES(19,'ib','JN','JPY',10000.0,1.0e-06);
+INSERT INTO instrument_variation VALUES(20,'ib','SN','CHF',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(21,'ib','BN','GBP',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(22,'ib','CN','CAD',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(23,'ib','AN','AUD',100.0,0.0001);
+INSERT INTO instrument_variation VALUES(24,'ib','MP','MXP',1.0,2.5e-05);
+INSERT INTO instrument_variation VALUES(25,'ib','US','ZB',1.0,0.03125);
+INSERT INTO instrument_variation VALUES(26,'ib','TY','ZN',1.0,0.015625);
+INSERT INTO instrument_variation VALUES(27,'ib','FB','ZF',1.0,0.0078125);
+INSERT INTO instrument_variation VALUES(28,'ib','TU','ZT',1.0,0.0078125);
+INSERT INTO instrument_variation VALUES(29,'ib','EN','NQ',1.0,0.25);
+INSERT INTO instrument_variation VALUES(30,'ib','ER','TF',1.0,0.1);
+INSERT INTO instrument_variation VALUES(31,'ib','MD','EMD',1.0,0.1);
+INSERT INTO instrument_variation VALUES(32,'ib','NK','NKD',1.0,5.0);
