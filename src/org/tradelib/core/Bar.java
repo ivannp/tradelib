@@ -28,6 +28,13 @@ public class Bar {
       this.contractInterest = contractInterest; this.volume = volume; this.totalInterest = totalInterest;
    }
    
+   public Bar(String symbol, LocalDateTime ts, double open, double high, double low, double close, long volume) {
+      
+      this.symbol = symbol; this.duration = Duration.ofDays(1); this.ts = ts;
+      this.open = open; this.high = high; this.low = low; this.close = close;
+      this.volume = volume;
+   }
+   
    public Bar(String symbol, LocalDateTime ts, double open, double high, double low, double close,
          long contractInterest, long volume, long totalInterest) {
       

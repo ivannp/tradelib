@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS trade_summaries(
     UNIQUE KEY trade_summaries_unique (strategy_id, symbol, type))
 ENGINE InnoDB;
 
+DROP TABLE IF EXISTS strategy_positions;
 CREATE TABLE IF NOT EXISTS strategy_positions (
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
@@ -121,7 +122,7 @@ CREATE TABLE IF NOT EXISTS strategy_positions (
    position DOUBLE NOT NULL,
    last_close DECIMAL(18,8),
    last_ts DATETIME,
-	details VARCHAR(256),
+	details TEXT,
     UNIQUE INDEX strategy_positions_unique (strategy_id, symbol, ts))
 ENGINE InnoDB;
 

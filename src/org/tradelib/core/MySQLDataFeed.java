@@ -58,7 +58,7 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       
       Connection con = DriverManager.getConnection(config.getProperty("db.url"));
       
-      String query = "SELECT symbol,ts,open,high,low,close,contract_interest,volume,total_interest " +
+      String query = "SELECT symbol,ts,open,high,low,close,volume " +
                      "FROM " + config.getProperty("bars.table") + " " +
                      "WHERE symbol IN (" + symbols + ") ";
       if(getFeedStart() != null) query += " AND ts >= DATE(?)";
@@ -96,7 +96,7 @@ public class MySQLDataFeed extends HistoricalDataFeed {
                               rs.getBigDecimal(4).doubleValue(),
                               rs.getBigDecimal(5).doubleValue(),
                               rs.getBigDecimal(6).doubleValue(),
-                              rs.getLong(7), rs.getLong(8), rs.getLong(9));
+                              rs.getLong(7));
             queue.add(bar);
             Integer count = counters.get(bar.getSymbol());
             if(count == null) counters.put(bar.getSymbol(), 1);

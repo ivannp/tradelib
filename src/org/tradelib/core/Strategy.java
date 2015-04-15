@@ -333,8 +333,8 @@ public abstract class Strategy implements IBrokerListener {
     * 
     * For a quick strategy evaluation, I currently use the approach from
     * "Building Reliable Trading Systems", by Keith Fitschen. 
-    *    * PnL (annual and total)
-    *    * Drawdown (max and average annual max)
+    *    * PnL
+    *    * Drawdown
     *    
     * @return A time series with two columns - PnL and MaxDrawdown
     * @throws SQLException 
@@ -394,6 +394,38 @@ public abstract class Strategy implements IBrokerListener {
       return annualStats;
    }
    
+   public TimeSeries<Double> getPnl() throws Exception {
+      return getPnl("TOTAL");
+   }
+   
+   public TimeSeries<Double> getPnl(String symbol) throws Exception {
+      TimeSeries<Double> pnl = new TimeSeries<Double>(2);
+
+      connectIfNecessary();
+      
+      getDbId();
+      
+      String query = "SELECT ts,pnl FROM pnls WHERE strategy_id=" + Long.toString(dbId) +
+               " AND symbol = '" + symbol +"' ORDER BY ts ASC";
+      Statement stmt = connection.createStatement();
+      ResultSet rs = stmt.executeQuery(query);
+      
+      double equity = 0.0;
+      double maxEquity = Double.MIN_VALUE;
+      double minEquity = Double.MAX_VALUE;
+      double maxDrawdown = Double.MAX_VALUE;
+      
+      LocalDateTime last = LocalDateTime.of(0, 1, 1, 0, 0);
+      
+      while(rs.next()) {
+         pnl.add(rs.getTimestamp(1).toLocalDateTime(), rs.getDouble(2));
+      }
+      
+      connection.commit();
+      
+      return pnl;
+   }
+  
    public TimeSeries<BigDecimal> getAnnualPnl(String symbols) throws SQLException {
       TimeSeries<BigDecimal> pnl = new TimeSeries<BigDecimal>(1);
 

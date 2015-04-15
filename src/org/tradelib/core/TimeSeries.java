@@ -237,4 +237,19 @@ public class TimeSeries<T> {
       
       return subset(ldtFrom, ldtTo);
    }
+   
+   public TimeSeries<T> subset(int year) {
+      TimeSeries<T> result = new TimeSeries<T>(data.size());
+      for(int row = 0; row <= size(); ++row) {
+         if(index.get(row).getYear() != year) continue;
+         result.index.add(index.get(row));
+         for(int col = 0; col < data.size(); ++col) {
+            result.data.get(col).add(data.get(col).get(row));
+         }
+      }
+      
+      result.columnNames.putAll(columnNames);
+      
+      return result;
+   }
 }
