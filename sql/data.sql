@@ -277,7 +277,17 @@ CREATE TABLE IF NOT EXISTS csi_bars (
 	close DECIMAL(18,8) NOT NULL,
    volume BIGINT NOT NULL,
 	interest BIGINT NOT NULL,
+   closing_bid DECIMAL(18,8),
+   closing_ask DECIMAL(18,8),
    UNIQUE INDEX cb_unique (symbol,ts))
+ENGINE = InnoDB;
+
+DROP TABLE IF EXISTS kv;
+CREATE TABLE IF NOT EXISTS kv (
+   id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+   key_text VARCHAR(200),
+   value_text VARCHAR(200),
+   UNIQUE INDEX kv_unique(key_text))
 ENGINE = InnoDB;
 
 DROP USER 'qboss'@'localhost';
@@ -289,3 +299,4 @@ GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_index TO 'qboss'@'localhost
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_rev TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_non TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.csi_bars TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.kv TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
