@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.logging.Logger;
 
@@ -409,6 +410,27 @@ public class Portfolio {
       }
    }
    
+   private InstrumentData getInstrumentData(Instrument instrument) {
+      return instrumentMap.get(instrument.getSymbol());
+   }
+   
+   /**
+    * @brief Obtains the PnL series for an instrument
+    * 
+    * This call is to be used together with "mark"
+    * 
+    * @param instrument
+    * @return The PnL series
+    */
+   Series getPnl(Instrument instrument) {
+      TreeMap<LocalDateTime, Summary> summaries = getInstrumentData(instrument).summaries;
+      Series ss = new Series(1);
+      for(Entry<LocalDateTime, Summary> entry : summaries.entrySet()) {
+         ss.append(entry.getKey(), entry.getValue().netPnl);
+      }
+      return ss;
+   }
+   
    /**
     * @brief Computes the PnL for an instrument
     *
@@ -417,7 +439,7 @@ public class Portfolio {
     * @param[in] instrument - the instrument
     * @param[in] prices - the price series for the PnL computation
     */
-   TimeSeries<Double> getPnl(Instrument instrument, TimeSeries<Double> prices)
+   TimeSeries<Double> getPnlOld(Instrument instrument, TimeSeries<Double> prices)
    {
       TimeSeries<Double> pnl = new TimeSeries<Double>();
       
@@ -626,164 +648,6 @@ public class Portfolio {
       return summary;
    }
    
-   public class TradingResults {
-      public TimeSeries<Double> pnl;
-      public List<Trade> stats;
-      public TradeSummary all;
-      public TradeSummary longs;
-      public TradeSummary shorts;
-      
-      public TradingResults() {
-         pnl = new TimeSeries<Double>();
-         stats = new ArrayList<Trade>();
-         all = new TradeSummary();
-         longs = new TradeSummary();
-         shorts = new TradeSummary();
-      }
-   }
-   
-   public class TradeSummaryBuilder {
-      private long numTrades;
-
-      private double grossProfits;
-      private double grossLosses;
-
-      private AverageAndVariance dailyPnlStats;
-      private AverageAndVariance pnlStats;
-
-      private long nonZero;
-      private long positive;
-      private long negative;
-
-      private double maxWin;
-      private double maxLoss;
-
-      private Average averageWinTrade;
-      private Average averageLossTrade;
-
-      private TimeSeries<Double> pnl;
-      private int pnlId;
-
-      private double equity;
-      private double minEquity;
-      private double maxEquity;
-      private double maxDrawdown;
-      
-      public TradeSummaryBuilder(TimeSeries<Double> pnl) {
-         numTrades = 0;
-         
-         grossProfits = 0.0;
-         grossLosses = 0.0;
-         
-         dailyPnlStats = new AverageAndVariance();
-         pnlStats = new AverageAndVariance();
-         
-         nonZero = 0; positive = 0; negative = 0;
-         
-         maxWin = 0.0;
-         maxLoss = 0.0;
-         
-         averageWinTrade = new Average();
-         averageLossTrade = new Average();
-         
-         this.pnl = new TimeSeries<Double>(pnl);
-         
-         pnlId = 0;
-         
-         equity = 0.0;
-         minEquity = Double.MAX_VALUE;
-         maxEquity = Double.MIN_VALUE;
-         maxDrawdown = Double.MAX_VALUE;
-      }
-      
-      public void add(Trade ts) {
-         ++numTrades;
-         if(ts.pnl < 0.0) {
-            ++nonZero;
-            ++negative;
-            averageLossTrade.add(ts.pnl);
-            grossLosses += ts.pnl;
-         } else if(ts.pnl > 0.0) {
-            ++nonZero;
-            ++positive;
-            averageWinTrade.add(ts.pnl);
-            grossProfits += ts.pnl;
-         }
-
-         pnlStats.add(ts.pnl);
-
-         maxWin = Math.max(maxWin, ts.pnl);
-         maxLoss = Math.min(maxLoss, ts.pnl);
-
-         // Set the PnL to zero until the current trade begins
-         while(pnlId < pnl.size() && pnl.getTimestamp(pnlId).isBefore(ts.start)) {
-            pnl.set(pnlId, 0.0);
-            ++pnlId;
-         }
-
-         // Keep the PnL as it is inside the current trade
-         while(pnlId < pnl.size() && !pnl.getTimestamp(pnlId).isAfter(ts.end)) {
-            equity += pnl.get(pnlId); 
-            maxEquity = Math.max(maxEquity, equity);
-            minEquity = Math.min(minEquity, equity);
-            maxDrawdown = Math.min(maxDrawdown, equity - maxEquity);
-
-            if(pnl.get(pnlId) != 0.0) {
-               dailyPnlStats.add(pnl.get(pnlId));
-            }
-
-            ++pnlId;
-         }
-      }
-      
-      public TradeSummary summarize() {
-         TradeSummary summary = new TradeSummary();
-         summary.numTrades = numTrades;
-
-         if(numTrades > 0) {
-            summary.grossLosses = grossLosses;
-            summary.grossProfits = grossProfits;
-            
-            if(grossLosses != 0.0) {
-               summary.profitFactor = Math.abs(grossProfits/grossLosses);
-            } else {
-               summary.profitFactor = Math.abs(grossProfits);
-            }
-
-            summary.averageTradePnl = pnlStats.getAverage();
-            summary.tradePnlStdDev = pnlStats.getStdDev();
-            if(numTrades > 0) {
-               summary.pctNegative = (double)negative/numTrades*100.0; 
-               summary.pctPositive = (double)positive/numTrades*100.0; 
-            } else {
-               summary.pctNegative = 0.0;
-               summary.pctPositive = 0.0;
-            }
-
-            summary.maxLoss = maxLoss;
-            summary.maxWin = maxWin;
-            summary.averageLoss = averageLossTrade.get();
-            summary.averageWin = averageWinTrade.get();
-            
-            if(summary.averageLoss != 0.0) {
-               summary.averageWinLoss = summary.averageWin/(summary.averageLoss*(-1.0)); 
-            } else {
-               summary.averageWinLoss = summary.averageWin;
-            }
-
-            summary.equityMin = minEquity;
-            summary.equityMax = maxEquity;
-            summary.maxDrawdown = maxDrawdown;
-
-            summary.averageDailyPnl = dailyPnlStats.getAverage();
-            summary.dailyPnlStdDev = dailyPnlStats.getStdDev();
-            summary.sharpeRatio = Functions.sharpeRatio(summary.averageDailyPnl, summary.dailyPnlStdDev, 252); 
-         }
-         
-         return summary;
-      }
-   }
-   
    /**
     * @brief Computes statistics for each trade.
     *
@@ -814,9 +678,9 @@ public class Portfolio {
       while(true) {
          double positionCostBasis = 0.0;
          
-         Trade ts = new Trade();
-
          int kk = jj - 1;
+         
+         Trade ts = new Trade();
          
          ts.start = transactions.get(ii).ts; 
          ts.end = transactions.get(kk).ts;
@@ -851,14 +715,19 @@ public class Portfolio {
          ii = jj;
          for(++jj; jj < transactions.size() && transactions.get(jj).positionQuantity != 0; ++jj) {
          }
-         if(jj != transactions.size()) ++jj;
+         if(jj != transactions.size()) {
+            ++jj;
+         } else {
+            // The last trade is still open - don't add it to the list
+            break;
+         }
       }
       return list;
    }
    
-   public TradingResults getTradingResults(Instrument instrument, TimeSeries<Double> prices) {
+   public TradingResults getTradingResults(Instrument instrument) {
       TradingResults tr = new TradingResults();
-      tr.pnl = getPnl(instrument, prices);
+      tr.pnl = getPnl(instrument);
       tr.stats = getTrades(instrument);
       TradeSummaryBuilder shorts = new TradeSummaryBuilder(tr.pnl);
       TradeSummaryBuilder longs = new TradeSummaryBuilder(tr.pnl);
@@ -881,5 +750,18 @@ public class Portfolio {
    
    public Iterable<String> symbols() {
       return instrumentMap.keySet();
+   }
+   
+   public Series getSummary(Instrument instrument) {
+      Series result = new Series(9);
+      for(Summary ss : instrumentMap.get(instrument.getSymbol()).summaries.values()) {
+         result.append(ss.ts, ss.longValue, ss.shortValue, ss.netValue,
+               ss.grossValue, ss.txnFees, ss.realizedPnl, ss.unrealizedPnl,
+               ss.grossPnl, ss.netPnl);
+      }
+      result.setNames("long.value", "short.value", "net.value", "gross.value",
+                      "fees", "realized.pnl", "unrealized.pnl",
+                      "gross.pnl", "net.pnl");
+      return result;
    }
 }

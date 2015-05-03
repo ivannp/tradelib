@@ -1,5 +1,6 @@
 package org.tradelib.core;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,14 +9,14 @@ import org.tradelib.functors.Sma;
 public class BarHistory {
    private List<Bar> bars = new ArrayList<Bar>();
    
-   public interface ISeries {
+   public interface IHistoryData {
       public double get(int id);
    }
    
-   private class MutableSeries<T> implements ISeries {
+   private class MutableData<T> implements IHistoryData {
       private List<T> list;
 
-      public MutableSeries() {
+      public MutableData() {
          list = new ArrayList<T>();
       }
       
@@ -29,11 +30,11 @@ public class BarHistory {
       }
    }
    
-   public class Series implements ISeries {
+   public class HistoryData implements IHistoryData {
       
-      private final ISeries container;
+      private final IHistoryData container;
       
-      public Series(ISeries container) {
+      public HistoryData(IHistoryData container) {
          this.container = container;
       }
 
@@ -51,21 +52,24 @@ public class BarHistory {
       }
    }
    
-   private MutableSeries<Double> openContainer = new MutableSeries<Double>();
-   private MutableSeries<Double> highContainer = new MutableSeries<Double>();
-   private MutableSeries<Double> lowContainer = new MutableSeries<Double>();
-   private MutableSeries<Double> closeContainer = new MutableSeries<Double>();
-   private MutableSeries<Long> volumeContainer = new MutableSeries<Long>();
-   private MutableSeries<Long> totalInterestContainer = new MutableSeries<Long>();
-   private MutableSeries<Long> contractInterestContainer = new MutableSeries<Long>();
+   private MutableData<Double> openContainer = new MutableData<Double>();
+   private MutableData<Double> highContainer = new MutableData<Double>();
+   private MutableData<Double> lowContainer = new MutableData<Double>();
+   private MutableData<Double> closeContainer = new MutableData<Double>();
+   private MutableData<Long> volumeContainer = new MutableData<Long>();
+   private MutableData<Long> totalInterestContainer = new MutableData<Long>();
+   private MutableData<Long> contractInterestContainer = new MutableData<Long>();
    
-   public Series open = new Series(openContainer);
-   public Series high = new Series(highContainer);
-   public Series low = new Series(lowContainer);
-   public Series close = new Series(closeContainer);
-   public Series volume = new Series(volumeContainer);
-   public Series totalInterest = new Series(totalInterestContainer);
-   public Series contractInterest = new Series(contractInterestContainer);
+   public HistoryData open = new HistoryData(openContainer);
+   public HistoryData high = new HistoryData(highContainer);
+   public HistoryData low = new HistoryData(lowContainer);
+   public HistoryData close = new HistoryData(closeContainer);
+   public HistoryData volume = new HistoryData(volumeContainer);
+   public HistoryData totalInterest = new HistoryData(totalInterestContainer);
+   public HistoryData contractInterest = new HistoryData(contractInterestContainer);
+
+   public LocalDateTime getDateTime(int id) { return bars.get(bars.size() - id - 1).getDateTime(); }
+   public LocalDateTime getDateTime() { return bars.get(bars.size() - 1).getDateTime(); }
    
    public double getOpen(int id) { return bars.get(bars.size() - id - 1).getOpen(); }
    public double getOpen() { return bars.get(bars.size() - 1).getOpen(); }

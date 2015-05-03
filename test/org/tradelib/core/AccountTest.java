@@ -266,7 +266,7 @@ public class AccountTest {
       
       // 2014-01-21
       account.addTransaction(audInstrument, LocalDateTime.of(2014, 1, 21, 14, 0, 1), 6, 84.57, contractFees*6.0);
-      account.addTransaction(ojInstrument, LocalDateTime.of(2014, 1, 21, 14, 0, 1), 3, 148.35, contractFees*3.0);
+      account.addTransaction(ojInstrument, LocalDateTime.of(2014, 1, 21, 14, 0, 2), 3, 148.35, contractFees*3.0);
       
       account.mark(ojInstrument, LocalDateTime.of(2014, 1, 21, 17, 0, 0), 150.15);
       account.mark(esInstrument, LocalDateTime.of(2014, 1, 21, 17, 0, 0), 1831.50);
@@ -287,7 +287,7 @@ public class AccountTest {
       
       // 2014-01-23
       account.addTransaction(audInstrument, LocalDateTime.of(2014, 1, 23, 11, 0, 5), -2, 85.47, contractFees*2.0);
-      account.addTransaction(esInstrument, LocalDateTime.of(2014, 1, 23, 14, 0, 1), -2, 1835.25, contractFees*2.0);
+      account.addTransaction(esInstrument, LocalDateTime.of(2014, 1, 23, 11, 0, 5), -2, 1835.25, contractFees*2.0);
       
       account.mark(ojInstrument, LocalDateTime.of(2014, 1, 23, 17, 0, 0), 151.20);
       account.mark(esInstrument, LocalDateTime.of(2014, 1, 23, 17, 0, 0), 1817.25);
@@ -394,7 +394,7 @@ public class AccountTest {
       assertEquals(175074.08, endEq, 1e-8);
       
       // 2014-02-07
-      account.addTransaction(audInstrument, LocalDateTime.of(2014, 2, 7, 14, 0, 1), 1, 87.01, contractFees*1.0);
+      account.addTransaction(audInstrument, LocalDateTime.of(2014, 2, 7, 11, 0, 5), 1, 87.01, contractFees*1.0);
       
       account.mark(ojInstrument, LocalDateTime.of(2014, 2, 7, 17, 0, 0), 154.00);
       account.mark(esInstrument, LocalDateTime.of(2014, 2, 7, 17, 0, 0), 1786.50);
@@ -468,5 +468,57 @@ public class AccountTest {
       account.updateEndEquity(LocalDateTime.of(2014, 2, 19, 17, 0, 0));
       endEq = account.getEndEquity();
       assertEquals(175184.56, endEq, 1e-8);
+      
+      // Load the expected account values
+      DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+      Series eas = Series.fromCsv("test/data/account.summary.csv", true, dtf);
+      // If we have repetitive days - these are fractions
+      for(int ii = 1; ii < eas.size(); ++ii) {
+         if(eas.getTimestamp(ii).equals(eas.getTimestamp(ii-1))) {
+            eas.set(ii, eas.getTimestamp(ii).plusNanos(1));
+         }
+      }
+      Series eps = Series.fromCsv("test/data/portfolio.summary.csv", true, dtf);
+      // If we have repetitive days - these are fractions
+      for(int ii = 1; ii < eps.size(); ++ii) {
+         if(eps.getTimestamp(ii).equals(eps.getTimestamp(ii-1))) {
+            eps.set(ii, eps.getTimestamp(ii).plusNanos(1));
+         }
+      }
+      
+      Series as = account.getSummary();
+      for(int ii = 0; ii < as.size(); ++ii) {
+         LocalDateTime ldt = as.getTimestamp(ii);
+         if(ldt.isBefore(LocalDateTime.of(2013, 12, 31, 0, 0))) continue;
+         if(ldt.isAfter(LocalDateTime.of(2014, 2, 14, 0, 0))) continue;
+         assertEquals(eas.get(ldt, "Additions"), as.get(ii, "addition"), 1e-8);
+         assertEquals(eas.get(ldt, "Withdrawals"), as.get(ii, "withdrawal"), 1e-8);
+         assertEquals(eas.get(ldt, "Interest"), as.get(ii, "interest"), 1e-8);
+         assertEquals(eas.get(ldt, "Realized.PL"), as.get(ii, "realized.pnl"), 1e-8);
+         assertEquals(eas.get(ldt, "Unrealized.PL"), as.get(ii, "unrealized.pnl"), 1e-8);
+         assertEquals(eas.get(ldt, "Gross.Trading.PL"), as.get(ii, "gross.pnl"), 1e-8);
+         assertEquals(eas.get(ldt, "Net.Trading.PL"), as.get(ii, "net.pnl"), 1e-8);
+         assertEquals(eas.get(ldt, "Txn.Fees"), as.get(ii, "fees"), 1e-8);
+         assertEquals(eas.get(ldt, "Advisory.Fees"), as.get(ii, "advisory.fees"), 1e-8);
+         assertEquals(eas.get(ldt, "Net.Performance"), as.get(ii, "net.performance"), 1e-8);
+         assertEquals(eas.get(ldt, "End.Eq"), as.get(ii, "end.equity"), 1e-8);
+      }
+      
+//      Series eojs = Series.fromCsv("test/data/portfolio.oj.csv", true, dtf);
+//      Series ojs = account.getPortfolioSummary(ojInstrument);
+//      for(int ii = 0; ii < ojs.size(); ++ii) {
+//         LocalDateTime ldt = as.getTimestamp(ii);
+//         if(ldt.isBefore(LocalDateTime.of(2013, 12, 31, 0, 0))) continue;
+//         if(ldt.isAfter(LocalDateTime.of(2014, 2, 14, 0, 0))) continue;
+//         assertEquals(eojs.get(ldt, "Long.Value"), ojs.get(ii, "long.value"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Short.Value"), ojs.get(ii, "short.value"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Net.Value"), ojs.get(ii, "net.value"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Gross.Value"), ojs.get(ii, "gross.value"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Realized.PL"), ojs.get(ii, "realized.pnl"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Unrealized.PL"), ojs.get(ii, "unrealized.pnl"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Gross.Trading.PL"), ojs.get(ii, "gross.pnl"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Txn.Fees"), ojs.get(ii, "fees"), 1e-8);
+//         assertEquals(eojs.get(ldt, "Net.Trading.PL"), ojs.get(ii, "net.pnl"), 1e-8);
+//      }
    }
 }

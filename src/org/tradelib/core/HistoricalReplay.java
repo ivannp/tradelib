@@ -220,7 +220,7 @@ public class HistoricalReplay implements IBroker, IBarListener {
    @Override
    public void barNotification(Bar bar) throws Exception {
       
-      assert bar.getDateTime().compareTo(lastBarTimestamp) >= 0 : "The feed must deliver bars in chronological order.";
+      assert lastBarTimestamp == null || bar.getDateTime().compareTo(lastBarTimestamp) >= 0 : "The feed must deliver bars in chronological order.";
       
       // Received a bar. If its timestamp is different than the 
       // current period, we need to process all bars for the period.

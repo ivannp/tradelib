@@ -123,6 +123,16 @@ public class Account {
       pd.portfolio.addTransaction(instrument, timeStamp, quantity, price, fees);
    }
    
+   public void addTransaction(Execution execution) {
+      addTransaction(execution.getInstrument(), execution.getDateTime(), execution.getQuantity(), execution.getPrice(), execution.getFees());
+   }
+   
+   public void setInitialEquity(LocalDateTime ts, double amount) {
+      summaries.clear();
+      summaries.put(ts, new Summary(ts, amount));
+      endEquityTimestamp = ts;
+   }
+   
    public void updatePortfolio(String portfolio, Instrument instrument, TimeSeries<Double> prices) {
       portfolios.get(portfolio).portfolio.updatePnl(instrument, prices);
    }
@@ -159,6 +169,10 @@ public class Account {
       mark(Portfolio.DEFAULT_NAME, instrument, ts, price);
    }
    
+   public void mark(Instrument instrument, Bar bar) {
+      mark(instrument, bar.getDateTime(), bar.getClose());
+   }
+   
    public void updateEndEquity(LocalDateTime to) {
       double prevEndEquity = Double.NaN;
       for(Summary ss : summaries.values()) {
@@ -168,17 +182,37 @@ public class Account {
             if(Double.isNaN(prevEndEquity)) {
                throw new IllegalStateException("prevEndEquity not set!");
             }
+            
             ss.endEq = prevEndEquity + ss.addition + ss.withdrawal + ss.netPerformance;
+            endEquityTimestamp = ss.ts;
          }
          prevEndEquity = ss.endEq;
       }
    }
    
+   public void updateEndEquity() {
+      updateEndEquity(summaries.lastKey());
+   }
+   
+   public Series getEquity() {
+      Series result = new Series(1);
+      for(Summary ss : summaries.values()) {
+         result.append(ss.ts, ss.endEq);
+      }
+      return result;
+   }
+   
    public double getEndEquity() {
-      return summaries.lastEntry().getValue().endEq;
+      // return summaries.lastEntry().getValue().endEq;
+      return summaries.get(endEquityTimestamp).endEq;
+   }
+   
+   public LocalDateTime getEndEquityTimestamp() {
+      return endEquityTimestamp;
    }
    
    public double getEndEquity(LocalDateTime upTo) {
+      assert !upTo.isAfter(endEquityTimestamp) : "NaN end equity requested";
       return summaries.floorEntry(upTo).getValue().endEq;
    }
    
@@ -188,5 +222,51 @@ public class Account {
    
    public PositionPnl getPositionPnl(Instrument instrument) {
       return portfolios.get(Portfolio.DEFAULT_NAME).portfolio.getPositionPnl(instrument);
+   }
+   
+   public Iterable<String> getPortfolioSymbols(String portfolio) {
+      return portfolios.get(portfolio).portfolio.symbols();
+   }
+   
+   public Iterable<String> getPortfolioSymbols() {
+      return getPortfolioSymbols(Portfolio.DEFAULT_NAME);
+   }
+   
+   public Series getInstrumentPnl(String portfolio, Instrument instrument) {
+      return portfolios.get(portfolio).portfolio.getPnl(instrument);
+   }
+   
+   public Series getInstrumentPnl(Instrument instrument) {
+      return getInstrumentPnl(Portfolio.DEFAULT_NAME, instrument);
+   }
+   
+   public TradingResults getPortfolioTradingResults(String portfolio, Instrument instrument) {
+      return portfolios.get(portfolio).portfolio.getTradingResults(instrument);
+   }
+   
+   public TradingResults getPortfolioTradingResults(Instrument instrument) {
+      return getPortfolioTradingResults(Portfolio.DEFAULT_NAME, instrument);
+   }
+   
+   public Series getSummary() {
+      Series result = new Series(11);
+      for(Summary ss : summaries.values()) {
+         result.append(ss.ts, ss.addition, ss.withdrawal, ss.interest,
+               ss.realizedPnl, ss.unrealizedPnl, ss.grossPnl, ss.txnFees,
+               ss.netPnl, ss.advisoryFees, ss.netPerformance, ss.endEq);
+      }
+      result.setNames("addition", "withdrawal", "interest",
+                      "realized.pnl", "unrealized.pnl", "gross.pnl",
+                      "fees", "net.pnl", "advisory.fees",
+                      "net.performance", "end.equity");
+      return result;
+   }
+   
+   public Series getPortfolioSummary(String portfolio, Instrument instrument) {
+      return portfolios.get(portfolio).portfolio.getSummary(instrument);
+   }
+   
+   public Series getPortfolioSummary(Instrument instrument) {
+      return getPortfolioSummary(Portfolio.DEFAULT_NAME, instrument);
    }
 }

@@ -1,8 +1,6 @@
 package org.tradelib.core;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -11,29 +9,28 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-
-import org.nd4j.linalg.api.buffer.DataBuffer;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.NDArrayFactory;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.jblas.NDArray;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 
 import com.opencsv.CSVReader;
 
 public class Series {
    private List<LocalDateTime> index;
-   private INDArray data;
-   
-   private static final int MAX_ROWS = 1000;
+   List<List<Double>> data;
    
    // The names of the data columns
    private HashMap<String, Integer> columnNames;
    
-   private INDArray array(int nrows, int ncols) {
-      Nd4j.dtype = DataBuffer.DOUBLE;
-      Nd4j.ORDER = NDArrayFactory.FORTRAN;
-      return Nd4j.create(nrows, ncols);
+   static public Series fromDailyCsv(String path, boolean header) throws Exception {
+      return fromCsv(path, header, DateTimeFormatter.ofPattern("yyyy-MM-dd"), LocalTime.of(17, 0));
+   }
+
+   static public Series fromCsv(String path, boolean header, DateTimeFormatter dtf) throws Exception {
+      return fromCsv(path, header, dtf, null);
    }
    
    static public Series fromCsv(String path, boolean header, DateTimeFormatter dtf, LocalTime lt) throws Exception {
@@ -43,15 +40,13 @@ public class Series {
       
       int ncols = line.length - 1;
       
-      String [] colNames = null;
+      Series result = new Series(ncols);
       
       if(header) {
-         colNames = Arrays.copyOfRange(line, 1, line.length);
+         result.setNames(Arrays.copyOfRange(line, 1, line.length));
          line = csv.readNext();
          if(line == null) {
             // Only a header
-            Series result = new Series(ncols);
-            if(colNames != null) result.setNames(colNames);
             return result;
          }
       }
@@ -61,51 +56,48 @@ public class Series {
          else dtf = DateTimeFormatter.ISO_DATE;
       }
       
-      ArrayList<LocalDateTime> index = new ArrayList<LocalDateTime>();
-      ArrayList<ArrayList<Double>> data = new ArrayList<ArrayList<Double>>();
-      for(int ii = 0; ii < ncols; ++ii) {
-         data.add(new ArrayList<Double>());
-      }
-      
+      double [] values = new double[ncols];
       for(; line != null; line = csv.readNext()) {
          for(int ii = 0; ii < ncols; ++ii) {
-            data.get(ii).add(Double.parseDouble(line[ii + 1]));
+            values[ii] = Double.parseDouble(line[ii + 1]);
          }
+
+         LocalDateTime ldt;
          if(lt != null) {
-            index.add(LocalDate.parse(line[0], dtf).atTime(lt));
+            ldt = LocalDate.parse(line[0], dtf).atTime(lt);
          } else {
-            index.add(LocalDateTime.parse(line[0], dtf));
+            ldt = LocalDateTime.parse(line[0], dtf);
          }
+         
+         result.append(ldt, values);
       }
-      
-      Series result = new Series(index.size(), data.size());
-      for(int row = 0; row < index.size(); ++row) {
-         for(int col = 0; col < data.size(); ++col) {
-            result.set(row, col, data.get(col).get(row));
-         }
-         result.set(row, index.get(row));
-      }
-      
-      if(colNames != null) result.setNames(colNames);
       
       return result;
    }
    
    public Series(int ncols) {
       index = new ArrayList<LocalDateTime>();
-      data = array(0, ncols);
+      data = new ArrayList<List<Double>>(ncols);
+      for(int ii = 0; ii < ncols; ++ii) {
+         data.add(new ArrayList<Double>());
+      }
       columnNames = new HashMap<String, Integer>();
    }
    
-   public Series(int nrows, int ncols) {
-      index = new ArrayList<LocalDateTime>();
-      for(int ii = 0; ii < nrows; ++ii) {
-         index.add(LocalDateTime.MIN);
-      }
-
-      data = array(nrows, ncols);
-      
-      columnNames = new HashMap<String, Integer>();
+   public double get(int rowId, int colId) {
+      return data.get(colId).get(rowId);
+   }
+   
+   public double get(int rowId) {
+      return get(rowId, 0);
+   }
+   
+   public double get(int rowId, String colName) {
+      return get(rowId, columnNames.get(colName));
+   }
+   
+   public LocalDateTime getTimestamp(int rowId) {
+      return index.get(rowId);
    }
    
    public double get(LocalDateTime ts, int colId) {
@@ -113,15 +105,19 @@ public class Series {
       if(rowId < 0) {
          throw new BadIndexException(ts.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " is not in the index");
       }
-      return data.getDouble(rowId, colId);
+      return data.get(colId).get(rowId);
    }
    
    public double get(LocalDateTime ts, String colName) {
       return get(ts, columnNames.get(colName));
    }
    
+   public void set(int row, double value) {
+      data.get(0).set(row, value);
+   }
+   
    public void set(int row, int col, double value) {
-      data.put(row, col, value);
+      data.get(col).set(row, value);
    }
    
    public void set(int row, LocalDateTime ts) {
@@ -135,22 +131,6 @@ public class Series {
       }
    }
    
-   public void rbindi(LocalDateTime ts, INDArray row) {
-      index.add(ts);
-      data = Nd4j.vstack(data, row);
-   }
-   
-   public Series rbindi(List<LocalDateTime> ts, INDArray rows) {
-      index.addAll(ts);
-      data = Nd4j.vstack(data, rows);
-      return this;
-   }
-   
-   public void rbindi(Series other) {
-      index.addAll(other.index);
-      data = Nd4j.vstack(data, other.data);
-   }
-   
    public void setNames(String ...names) {
       columnNames.clear();
       for(int ii = 0; ii < names.length; ++ii) {
@@ -162,9 +142,135 @@ public class Series {
       return index.size();
    }
    
-   public Series headi(int rows) {
-      index.subList(rows, index.size()).clear();
-      data = data.reshape(rows, data.columns());
-      return this;
+   public void append(LocalDateTime ts, double ...args) {
+      index.add(ts);
+      int endLoop = Math.min(args.length, data.size());
+      for(int ii = 0; ii < endLoop; ++ii) {
+         data.get(ii).add(args[ii]);
+      }
+      for(int ii = endLoop; ii < data.size(); ++ii) {
+         data.get(ii).add(args[args.length - 1]);
+      }
+   }
+   
+   public Series head(int rows) {
+      if(rows < 0) {
+         if(Math.abs(rows) > size()) return null;
+         rows = size() + rows;
+      } else if(rows > size()){
+         return this;
+      }
+      Series result = new Series();
+      result.index = index.subList(0, rows);
+      result.data = new ArrayList<List<Double>>(data.size());
+      for(int ii = 0; ii < data.size(); ++ii) {
+         result.data.add(data.get(ii).subList(0, rows));
+      }
+      if(columnNames != null) {
+         result.columnNames = new HashMap<String, Integer>(columnNames);
+      }
+      return result;
+   }
+   
+   public Series tail(int rows) {
+      if(rows < 0) rows = size() + rows;
+      Series result = new Series();
+      result.index = index.subList(size() - rows, size());
+      result.data = new ArrayList<List<Double>>(data.size());
+      for(int ii = 0; ii < data.size(); ++ii) {
+         result.data.add(data.get(ii).subList(size() - rows, size()));
+      }
+      if(columnNames != null) {
+         result.columnNames = new HashMap<String, Integer>(columnNames);
+      }
+      return result;
+   }
+   
+   private TreeMap<LocalDateTime,Integer> buildDailyIndex() {
+      TreeMap<LocalDateTime,Integer> result = new TreeMap<LocalDateTime, Integer>();
+      int ii = 0;
+      while(ii < size()) {
+         LocalDate ld = index.get(ii).toLocalDate();
+         int jj = ii + 1;
+         for(; jj < size(); ++jj) {
+            if(!index.get(jj).toLocalDate().equals(ld)) {
+               break;
+            }
+         }
+         --jj;
+         
+         result.put(ld.atStartOfDay(), jj - ii + 1);
+         
+         ii = jj + 1;
+      }
+         
+      return result;
+   }
+   
+   public Series toDaily(BinaryOperator<Double> accumulator) {
+      return toDaily(0.0, accumulator);
+   }
+   
+   public Series toDaily(double identity, BinaryOperator<Double> accumulator) {
+      TreeMap<LocalDateTime,Integer> newIndex = buildDailyIndex();
+      Series result = new Series();
+      int numUnique = newIndex.size();
+      result.index = new ArrayList<LocalDateTime>(numUnique);
+      result.data = new ArrayList<List<Double>>(data.size());
+      for(int ii = 0; ii < data.size(); ++ii) {
+         result.data.add(new ArrayList<Double>(newIndex.size()));
+      }
+      
+      int currentIndex = 0;
+      Iterator<Map.Entry<LocalDateTime, Integer>> iter = newIndex.entrySet().iterator();
+      while(iter.hasNext()) {
+         Map.Entry<LocalDateTime, Integer> entry = iter.next();
+         result.append(entry.getKey(), 0.0);
+         int lastIndex = result.size() - 1;
+         for(int jj = 0; jj < data.size(); ++jj) {
+            result.set(lastIndex, data.get(jj).subList(currentIndex, currentIndex + entry.getValue()).stream().reduce(identity, accumulator));
+         }
+         currentIndex += entry.getValue();
+//         result.append(entry.getKey(), 0.0);
+//         int lastIndex = result.size() - 1;
+//         for(int ii = 0; ii < entry.getValue(); ++ii, ++currentIndex) {
+//            for(int jj = 0; jj < data.size(); ++jj) {
+//               result.set(lastIndex, jj, result.get(lastIndex, jj) + get(currentIndex, jj));
+//            }
+//         }
+      }
+      
+      if(columnNames != null) {
+         result.columnNames = new HashMap<String, Integer>(columnNames);
+      }
+      
+      return result;
+   }
+   
+   public void print(DateTimeFormatter dtf) {
+      for(int ii = 0; ii < size(); ++ii) {
+         System.out.print(index.get(ii).format(dtf) + ": ");
+         System.out.format("%,.2f", data.get(0).get(ii));
+         for(int jj = 1; jj < data.size(); ++jj) {
+            System.out.format(", %,.2f", data.get(jj).get(ii));
+         }
+         System.out.println();
+      }
+   }
+   
+   public void print() {
+      print(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+   }
+   
+   public void print(String pattern) {
+      print(DateTimeFormatter.ofPattern(pattern));
+   }
+   
+   private Series() {
+   }
+   
+   public int columns() {
+      return data.size();
    }
 }
+ 

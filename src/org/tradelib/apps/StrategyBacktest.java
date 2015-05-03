@@ -12,6 +12,7 @@ import org.tradelib.core.Context;
 import org.tradelib.core.HistoricalDataFeed;
 import org.tradelib.core.HistoricalReplay;
 import org.tradelib.core.MySQLDataFeed;
+import org.tradelib.core.Series;
 import org.tradelib.core.Strategy;
 import org.tradelib.core.TimeSeries;
 import org.tradelib.core.TradeSummary;
@@ -52,7 +53,9 @@ public class StrategyBacktest {
       System.out.println("backtest took " + String.format("%.2f secs",(double)elapsedTime/1e9));
       
       start = System.nanoTime();
+      strategy.updateEndEquity();
       strategy.writeExecutionsAndTrades();
+      strategy.writeEquity();
       elapsedTime = System.nanoTime() - start;
       System.out.println("writing to the database took " + String.format("%.2f secs",(double)elapsedTime/1e9));
       
@@ -64,7 +67,8 @@ public class StrategyBacktest {
       // Short performance statistics for the report
       
       // Annual statistics
-      TimeSeries<Double> annualStats = strategy.getAnnualStats();
+      Series annualStats = strategy.getAnnualStats();
+      Series annualStats2 = strategy.getAnnualStats2();
       
       if(annualStats.size() > 0) {
          Average avgPnl = new Average();
@@ -88,12 +92,48 @@ public class StrategyBacktest {
          System.out.println();
       }
       
+      if(annualStats2.size() > 0) {
+         System.out.println();
+         Average avgPnl = new Average();
+         Average avgPnlPct = new Average();
+         Average avgDD = new Average();
+         Average avgDDPct = new Average();
+         for(int ii = 0; ii < annualStats2.size(); ++ii) {
+            String yearStr = annualStats2.getTimestamp(ii).format(DateTimeFormatter.ofPattern("yyyy"));
+            String pnlStr = String.format("%,d", Math.round(annualStats2.get(ii, 0)));
+            String pnlPctStr = String.format("%.2f%%", annualStats2.get(ii, 1)*100.0);
+            String endEqStr = String.format("%,d", Math.round(annualStats2.get(ii, 2)));
+            String ddStr = String.format("%,.2f", annualStats2.get(ii, 3));
+            String ddPctStr = String.format("%.2f%%", annualStats2.get(ii, 4)*100.0);
+            System.out.println(yearStr + " PnL: " + pnlStr + ", PnL Pct: " + pnlPctStr +
+                  ", End Equity: " + endEqStr + ", MaxDD: " + ddStr +
+                  ", Pct MaxDD: " + ddPctStr);
+            avgPnl.add(annualStats2.get(ii, 0));
+            avgPnlPct.add(annualStats2.get(ii, 1));
+            avgDD.add(Math.abs(annualStats2.get(ii,3)));
+            avgDDPct.add(Math.abs(annualStats2.get(ii, 4)));
+         }
+         
+         System.out.println();
+         
+         String pnlStr = String.format("%,d", Math.round(avgPnl.get()));
+         String pnlPctStr = String.format("%.2f%%", avgPnlPct.get()*100.0);
+         String ddStr = String.format("%,d", Math.round(avgDD.get()));
+         String ddPctStr = String.format("%.2f%%", avgDDPct.get()*100.0);
+         double gainToPain = avgPnl.get() / avgDD.get();
+         System.out.println("Avg PnL: " + pnlStr + ", Pct Avg PnL: " + pnlPctStr + 
+               ", Avg DD: " + ddStr + ", Pct Avg DD: " + ddPctStr + 
+               ", Gain to Pain: " + String.format("%.4f", gainToPain));
+      } else {
+         System.out.println();
+      }
+      
       // Global statistics
       LocalDateTime maxEquityDateTime = LocalDateTime.MIN;
       double maxEquity = Double.MIN_VALUE;
       double equity = 0.0;
       
-      TimeSeries<Double> pnl = strategy.getPnl();
+      Series pnl = strategy.getPnl();
       for(int ii = 0; ii < pnl.size(); ++ii) {
          equity += pnl.get(ii);
          if(equity > maxEquity) {

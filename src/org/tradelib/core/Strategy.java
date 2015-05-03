@@ -10,6 +10,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -35,7 +36,8 @@ public abstract class Strategy implements IBrokerListener {
    
    private LocalDateTime tradingStart = LocalDateTime.of(1990, 1, 1, 0, 0);
 
-   protected Portfolio portfolio = new Portfolio();
+   // protected Portfolio portfolio = new Portfolio();
+   protected Account account = new Account();
    
    protected Connection connection = null;
    
@@ -97,6 +99,12 @@ public abstract class Strategy implements IBrokerListener {
       stmt.close();
       
       query = "DELETE FROM strategy_positions WHERE strategy_id=?"; 
+      stmt = connection.prepareStatement(query);
+      stmt.setLong(1, dbId);
+      stmt.executeUpdate();
+      stmt.close();
+      
+      query = "DELETE FROM end_equity WHERE strategy_id=?"; 
       stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.executeUpdate();
@@ -167,15 +175,14 @@ public abstract class Strategy implements IBrokerListener {
    }
    
    public void writeTrades() throws Exception {
-      for(String symbol : portfolio.symbols()) {
+      for(String symbol : account.getPortfolioSymbols()) {
          writeTrades(broker.getInstrument(symbol));
       }
    }
    
    public void writeTrades(Instrument instrument) throws Exception {
       BarHistory history = barData.getHistory(instrument.getSymbol(), Duration.ofDays(1));
-      TimeSeries<Double> close = history.getCloseSeries();
-      TimeSeries<Double> pnl = portfolio.getPnl(instrument, close);
+      Series pnl = account.getInstrumentPnl(instrument);
       if(pnl.size() == 0) return;
       
       connectIfNecessary();
@@ -194,7 +201,6 @@ public abstract class Strategy implements IBrokerListener {
          stmt.setTimestamp(3, Timestamp.valueOf(pnl.getTimestamp(ii)));
          stmt.setDouble(4, pnl.get(ii));
          stmt.setDouble(5, pnl.get(ii));
-         // stmt.executeUpdate();
          stmt.addBatch();
       }
       stmt.executeBatch();
@@ -204,7 +210,8 @@ public abstract class Strategy implements IBrokerListener {
       long elapsedTime = System.nanoTime() - start;
       // System.out.println("pnls insert took " + String.format("%.4f secs",(double)elapsedTime/1e9));
       
-      Portfolio.TradingResults tr = portfolio.getTradingResults(instrument, close);
+      TradingResults tr = account.getPortfolioTradingResults(instrument);
+      // TradingResults trold = portfolio.getTradingResults(instrument);
       // Write the trade statistics
       if(tr.stats.size() > 0) {
          
@@ -215,6 +222,7 @@ public abstract class Strategy implements IBrokerListener {
          stmt.setLong(1, dbId);
          stmt.setString(2, instrument.getSymbol());
          start = System.nanoTime();
+         int ii = 0;
          for(Trade tradeStats : tr.stats) {
             stmt.setTimestamp(3, Timestamp.valueOf(tradeStats.start));
             stmt.setTimestamp(4, Timestamp.valueOf(tradeStats.end));
@@ -226,7 +234,16 @@ public abstract class Strategy implements IBrokerListener {
             stmt.setDouble(9, tradeStats.pctPnl);
             stmt.setDouble(10, tradeStats.tickPnl);
             stmt.setDouble(11, tradeStats.fees);
+//            Trade oldTradeStats = trold.stats.get(ii);
+//            if(tradeStats.pnl != oldTradeStats.pnl ||
+//               tradeStats.numTransactions != oldTradeStats.numTransactions ||
+//               tradeStats.initialPosition != oldTradeStats.initialPosition) {
+//               
+//               throw new Exception("Alternative trade statitics don't match!");
+//            }
             stmt.executeUpdate();
+            
+            ++ii;
          }
          connection.commit();
          stmt.close();
@@ -280,6 +297,27 @@ public abstract class Strategy implements IBrokerListener {
       }
    }
    
+   public void writeEquity() throws SQLException {
+      connectIfNecessary();
+      
+      // Accumulate using the last value for each day (the end equity)
+      Series eq = getAccount().getEquity().toDaily((Double x, Double y) -> y);
+      
+      String query = " INSERT INTO end_equity(strategy_id,ts,equity) VALUE (?,?,?) " +
+                     " ON DUPLICATE KEY UPDATE equity=?";
+      PreparedStatement stmt = connection.prepareStatement(query);
+      stmt.setLong(1, dbId);
+      for(int ii = 0; ii < eq.size(); ++ii) {
+         stmt.setTimestamp(2, Timestamp.valueOf(eq.getTimestamp(ii)));
+         stmt.setDouble(3, eq.get(ii));
+         stmt.setDouble(4, eq.get(ii));
+         stmt.addBatch();
+      }
+      stmt.executeBatch();
+      connection.commit();
+      stmt.close();
+   }
+   
    private void setDoubleParam(PreparedStatement stmt, int index, double value) throws SQLException {
       if(!Double.isNaN(value)) {
          stmt.setDouble(index, value);
@@ -296,7 +334,7 @@ public abstract class Strategy implements IBrokerListener {
    protected void onBarClose(BarHistory history, Bar bar) throws Exception {}
    protected void onBarClosed(BarHistory history, Bar bar) throws Exception {}
    protected void onOrderNotification(OrderNotification on) throws Exception {}
-
+   
    public void barOpenHandler(Bar bar) throws Exception {
       BarHistory history = barData.getHistory(bar);
       // null means the strategy is not interested in this symbol
@@ -324,8 +362,101 @@ public abstract class Strategy implements IBrokerListener {
 
    public void orderExecutedHandler(OrderNotification on) throws Exception {
       executions.add(on.execution);
-      portfolio.addTransaction(on.execution);
+      // portfolio.addTransaction(on.execution);
+      getAccount().addTransaction(on.execution);
       onOrderNotification(on);
+   }
+   
+   /**
+    * @brief Get basic statistics to evaluate performance.
+    * 
+    * Computations are based off the equity curve.
+    * 
+    * For a quick strategy evaluation, I currently use the approach from
+    * "Building Reliable Trading Systems", by Keith Fitschen.
+    *  
+    *    * PnL
+    *    * PnL as percentage
+    *    * End Equity
+    *    * Cash Max Drawdown
+    *    * Percentage Max Drawdown
+    *    
+    * @return A time series with the afford-mentioned columns
+    * 
+    * @throws SQLException 
+    */
+   public Series getAnnualStats2() throws Exception {
+      Series result = new Series(5);
+      
+      connectIfNecessary();
+      
+      String query = "SELECT ts,equity FROM end_equity WHERE strategy_id=" +
+                     Long.toString(dbId) + " ORDER BY ts ASC";
+      Statement stmt = connection.createStatement();
+      ResultSet rs = stmt.executeQuery(query);
+   
+      double equity = Double.NaN;
+      double startEquity = Double.NaN;
+      double maxEquity = Double.NaN;
+      double minEquity = Double.NaN;
+      double maxDD = Double.NaN;
+      double maxDDPct = 0.0;
+   
+      LocalDateTime last = null;
+      
+      if(rs.next()) {
+         last = rs.getTimestamp(1).toLocalDateTime();
+         equity = rs.getDouble(2);
+         maxEquity = equity;
+         minEquity = equity;
+         startEquity = equity;
+         maxDD = 0.0;
+      }
+      
+      while(rs.next()) {
+         // Kick off the statistics at the first different equity
+         if(result.size() == 0 && rs.getDouble(2) == equity) {
+            last = rs.getTimestamp(1).toLocalDateTime();
+            continue;
+         }
+         
+         LocalDateTime ldt = rs.getTimestamp(1).toLocalDateTime(); 
+         if(ldt.getYear() == last.getYear()) {
+            // Same year, update the counters
+            equity = rs.getDouble(2);
+            maxEquity = Math.max(maxEquity, equity);
+            minEquity = Math.min(minEquity, equity);
+            maxDD = Math.min(maxDD, equity - maxEquity);
+            maxDDPct = Math.min(maxDDPct, equity/maxEquity - 1.0);
+         } else {
+            // Starting a new year. Summarize statistics and reset the counters.
+            double pnl = equity - startEquity;
+            double pnlPct = equity/startEquity - 1.0;
+            result.append(last, pnl, pnlPct, equity, maxDD, maxDDPct);
+            
+            startEquity = equity;
+            equity = rs.getDouble(2);
+            
+            maxEquity = equity;
+            minEquity = equity;
+            
+            maxDD = 0.0;
+            maxDDPct = 0.0;
+            
+            last = ldt;
+         }
+      }
+      
+      // Add the last year
+      if(!Double.isNaN(equity)) {
+         double pnl = equity - startEquity;
+         double pnlPct = equity/startEquity - 1.0;
+         result.append(last, pnl, pnlPct, equity, maxDD, maxDDPct);
+      }
+      
+      connection.commit();
+      
+      return result;
    }
 
    /**
@@ -339,8 +470,8 @@ public abstract class Strategy implements IBrokerListener {
     * @return A time series with two columns - PnL and MaxDrawdown
     * @throws SQLException 
     */
-   public TimeSeries<Double> getAnnualStats() throws SQLException {
-      TimeSeries<Double> annualStats = new TimeSeries<Double>(2);
+   public Series getAnnualStats() throws SQLException {
+      Series annualStats = new Series(2);
 
       connectIfNecessary();
       
@@ -374,7 +505,7 @@ public abstract class Strategy implements IBrokerListener {
          } else {
             // Starting a new year. Summarize statistics and reset the counters.
             if(maxDrawdown != Double.MAX_VALUE) {
-               annualStats.add(last, equity, maxDrawdown);
+               annualStats.append(last, equity, maxDrawdown);
             }
             equity = pnl;
             maxEquity = equity;
@@ -386,7 +517,7 @@ public abstract class Strategy implements IBrokerListener {
       
       // Add the last year
       if(maxDrawdown != Double.MAX_VALUE) {
-         annualStats.add(last, equity, maxDrawdown);
+         annualStats.append(last, equity, maxDrawdown);
       }
       
       connection.commit();
@@ -394,12 +525,12 @@ public abstract class Strategy implements IBrokerListener {
       return annualStats;
    }
    
-   public TimeSeries<Double> getPnl() throws Exception {
+   public Series getPnl() throws Exception {
       return getPnl("TOTAL");
    }
    
-   public TimeSeries<Double> getPnl(String symbol) throws Exception {
-      TimeSeries<Double> pnl = new TimeSeries<Double>(2);
+   public Series getPnl(String symbol) throws Exception {
+      Series pnl = new Series(2);
 
       connectIfNecessary();
       
@@ -418,7 +549,7 @@ public abstract class Strategy implements IBrokerListener {
       LocalDateTime last = LocalDateTime.of(0, 1, 1, 0, 0);
       
       while(rs.next()) {
-         pnl.add(rs.getTimestamp(1).toLocalDateTime(), rs.getDouble(2));
+         pnl.append(rs.getTimestamp(1).toLocalDateTime(), rs.getDouble(2));
       }
       
       connection.commit();
@@ -609,7 +740,7 @@ public abstract class Strategy implements IBrokerListener {
       
       public void add(double pnl) {
          this.pnl += pnl; 
-         seenNonZeroPnl |= this.pnl != 0;
+         seenNonZeroPnl |= this.pnl != 0.0;
       }
    }
    
@@ -628,7 +759,7 @@ public abstract class Strategy implements IBrokerListener {
     *
     * @param[in] the id to use for the entries in the various tables
     */
-   void totalTradeStats(String name) throws SQLException {
+   protected void totalTradeStats(String name) throws SQLException {
 
       connectIfNecessary();
       
@@ -675,25 +806,25 @@ public abstract class Strategy implements IBrokerListener {
       //    1. Weather we have seen non-zero PnL for that timestamp
       //    2. The total PnL
       TreeMap<LocalDateTime,PnlPair> pnlMap = new TreeMap<LocalDateTime, PnlPair>();
-      query = "SELECT ts,pnl FROM pnls WHERE strategy_id=" + Long.toString(dbId);
-      stmt = connection.createStatement();
-      rs = stmt.executeQuery(query);
+      query = "SELECT ts,pnl FROM pnls WHERE strategy_id=?";
+      PreparedStatement pstmt = connection.prepareStatement(query);
+      pstmt.setLong(1, dbId);
+      rs = pstmt.executeQuery(); 
       while(rs.next()) {
          LocalDateTime ldt = rs.getTimestamp(1).toLocalDateTime();
          double pnl = rs.getDouble(2);
          PnlPair pp = pnlMap.get(ldt);
          if(pp != null) {
             pp.add(pnl);
-            pnlMap.put(ldt, pp);
          } else {
             pnlMap.put(ldt, new PnlPair(pnl));
          }
       }
-      stmt.close();
+      pstmt.close();
       
       // Write the total PnL and collect the basic per-bar and equity statistics
       query = "INSERT INTO pnls (strategy_id,symbol,ts,pnl) values (?,?,?,?)";
-      PreparedStatement pstmt = connection.prepareStatement(query);
+      pstmt = connection.prepareStatement(query);
       pstmt.setLong(1, dbId);
       pstmt.setString(2, name);
       
@@ -750,7 +881,8 @@ public abstract class Strategy implements IBrokerListener {
       totalTradeStats("TOTAL");
    }
    
-   public Portfolio getPortfolio() { return portfolio; }
+   // public Portfolio getPortfolio() { return portfolio; }
+   public Account getAccount() {return account; }
    
    protected class Status {
       public long getId() { return id; }
@@ -1125,4 +1257,6 @@ public abstract class Strategy implements IBrokerListener {
    
    public void setTradingStart(LocalDateTime ldt) {tradingStart = ldt; }
    public LocalDateTime getTradingStart() { return tradingStart; }
+   
+   public void updateEndEquity() { getAccount().updateEndEquity(); }
 }
