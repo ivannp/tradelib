@@ -385,7 +385,7 @@ public abstract class Strategy implements IBrokerListener {
     * 
     * @throws SQLException 
     */
-   public Series getAnnualStats2() throws Exception {
+   public Series getAnnualStats() throws Exception {
       Series result = new Series(5);
       
       connectIfNecessary();
@@ -470,7 +470,7 @@ public abstract class Strategy implements IBrokerListener {
     * @return A time series with two columns - PnL and MaxDrawdown
     * @throws SQLException 
     */
-   public Series getAnnualStats() throws SQLException {
+   public Series getAnnualStatsOld() throws SQLException {
       Series annualStats = new Series(2);
 
       connectIfNecessary();
@@ -555,6 +555,10 @@ public abstract class Strategy implements IBrokerListener {
       connection.commit();
       
       return pnl;
+   }
+   
+   public Series getEquity() {
+      return getAccount().getEquity();
    }
   
    public TimeSeries<BigDecimal> getAnnualPnl(String symbols) throws SQLException {

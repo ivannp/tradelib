@@ -475,17 +475,10 @@ public class AccountTest {
       // If we have repetitive days - these are fractions
       for(int ii = 1; ii < eas.size(); ++ii) {
          if(eas.getTimestamp(ii).equals(eas.getTimestamp(ii-1))) {
-            eas.set(ii, eas.getTimestamp(ii).plusNanos(1));
+            eas.set(ii, eas.getTimestamp(ii).plusNanos(1000));
          }
       }
-      Series eps = Series.fromCsv("test/data/portfolio.summary.csv", true, dtf);
-      // If we have repetitive days - these are fractions
-      for(int ii = 1; ii < eps.size(); ++ii) {
-         if(eps.getTimestamp(ii).equals(eps.getTimestamp(ii-1))) {
-            eps.set(ii, eps.getTimestamp(ii).plusNanos(1));
-         }
-      }
-      
+            
       Series as = account.getSummary();
       for(int ii = 0; ii < as.size(); ++ii) {
          LocalDateTime ldt = as.getTimestamp(ii);
@@ -504,21 +497,54 @@ public class AccountTest {
          assertEquals(eas.get(ldt, "End.Eq"), as.get(ii, "end.equity"), 1e-8);
       }
       
-//      Series eojs = Series.fromCsv("test/data/portfolio.oj.csv", true, dtf);
-//      Series ojs = account.getPortfolioSummary(ojInstrument);
-//      for(int ii = 0; ii < ojs.size(); ++ii) {
-//         LocalDateTime ldt = as.getTimestamp(ii);
-//         if(ldt.isBefore(LocalDateTime.of(2013, 12, 31, 0, 0))) continue;
-//         if(ldt.isAfter(LocalDateTime.of(2014, 2, 14, 0, 0))) continue;
-//         assertEquals(eojs.get(ldt, "Long.Value"), ojs.get(ii, "long.value"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Short.Value"), ojs.get(ii, "short.value"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Net.Value"), ojs.get(ii, "net.value"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Gross.Value"), ojs.get(ii, "gross.value"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Realized.PL"), ojs.get(ii, "realized.pnl"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Unrealized.PL"), ojs.get(ii, "unrealized.pnl"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Gross.Trading.PL"), ojs.get(ii, "gross.pnl"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Txn.Fees"), ojs.get(ii, "fees"), 1e-8);
-//         assertEquals(eojs.get(ldt, "Net.Trading.PL"), ojs.get(ii, "net.pnl"), 1e-8);
-//      }
+      Series eps = Series.fromCsv("test/data/portfolio.summary.csv", true, dtf);
+      // If we have repetitive days - these are fractions
+      for(int ii = 1; ii < eps.size(); ++ii) {
+         if(eps.getTimestamp(ii).equals(eps.getTimestamp(ii-1))) {
+            eps.set(ii, eps.getTimestamp(ii).plusNanos(1000));
+         }
+      }
+      
+      Series ps = account.getPortfolioSummary();
+      for(int ii = 0; ii < ps.size(); ++ii) {
+         LocalDateTime ldt = ps.getTimestamp(ii);
+         if(ldt.isBefore(LocalDateTime.of(2013, 12, 31, 0, 0))) continue;
+         if(ldt.isAfter(LocalDateTime.of(2014, 2, 14, 0, 0))) continue;
+         assertEquals(eps.get(ldt, "Long.Value"), ps.get(ii, "long.value"), 1e-8);
+         assertEquals(eps.get(ldt, "Short.Value"), ps.get(ii, "short.value"), 1e-8);
+         assertEquals(eps.get(ldt, "Net.Value"), ps.get(ii, "net.value"), 1e-8);
+         assertEquals(eps.get(ldt, "Gross.Value"), ps.get(ii, "gross.value"), 1e-8);
+         assertEquals(eps.get(ldt, "Realized.PL"), ps.get(ii, "realized.pnl"), 1e-8);
+         assertEquals(eps.get(ldt, "Unrealized.PL"), ps.get(ii, "unrealized.pnl"), 1e-8);
+         assertEquals(eps.get(ldt, "Gross.Trading.PL"), ps.get(ii, "gross.pnl"), 1e-8);
+         assertEquals(eps.get(ldt, "Txn.Fees"), ps.get(ii, "fees"), 1e-8);
+         assertEquals(eps.get(ldt, "Net.Trading.PL"), ps.get(ii, "net.pnl"), 1e-8);
+      }
+      
+      Series expected = Series.fromCsv("test/data/portfolio.oj.csv", true, dtf);
+      // If we have repetitive days - these are fractions
+      for(int ii = 1; ii < expected.size(); ++ii) {
+         if(expected.getTimestamp(ii).equals(expected.getTimestamp(ii-1))) {
+            expected.set(ii, expected.getTimestamp(ii).plusNanos(1000));
+         }
+      }
+      
+      Series actual = account.getPositionPnls(ojInstrument);
+      for(int ii = 0; ii < actual.size(); ++ii) {
+         LocalDateTime ldt = actual.getTimestamp(ii);
+         if(ldt.isBefore(LocalDateTime.of(2013, 12, 31, 0, 0))) continue;
+         if(ldt.isAfter(LocalDateTime.of(2014, 2, 14, 0, 0))) continue;
+         assertEquals(expected.get(ldt, "Pos.Qty"), actual.get(ii, "quantity"), 1e-8);
+         assertEquals(expected.get(ldt, "Pos.Value"), actual.get(ii, "value"), 1e-8);
+         assertEquals(expected.get(ldt, "Pos.Avg.Cost"), actual.get(ii, "avg.cost"), 1e-8);
+         assertEquals(expected.get(ldt, "Pos.Value"), actual.get(ii, "value"), 1e-8);
+         assertEquals(expected.get(ldt, "Txn.Value"), actual.get(ii, "txn.value"), 1e-8);
+         assertEquals(expected.get(ldt, "Pos.Value"), actual.get(ii, "value"), 1e-8);
+         assertEquals(expected.get(ldt, "Period.Realized.PL"), actual.get(ii, "realized.pnl"), 1e-8);
+         assertEquals(expected.get(ldt, "Period.Unrealized.PL"), actual.get(ii, "unrealized.pnl"), 1e-8);
+         assertEquals(expected.get(ldt, "Gross.Trading.PL"), actual.get(ii, "gross.pnl"), 1e-8);
+         assertEquals(expected.get(ldt, "Net.Trading.PL"), actual.get(ii, "net.pnl"), 1e-8);
+         assertEquals(expected.get(ldt, "Txn.Fees"), actual.get(ii, "fees"), 1e-8);
+      }
    }
 }

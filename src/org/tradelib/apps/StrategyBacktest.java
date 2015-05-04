@@ -68,57 +68,34 @@ public class StrategyBacktest {
       
       // Annual statistics
       Series annualStats = strategy.getAnnualStats();
-      Series annualStats2 = strategy.getAnnualStats2();
       
       if(annualStats.size() > 0) {
-         Average avgPnl = new Average();
-         Average avgDrawdown = new Average();
-         for(int ii = 0; ii < annualStats.size(); ++ii) {
-            String syear = annualStats.getTimestamp(ii).format(DateTimeFormatter.ofPattern("yyyy"));
-            String spnl = String.format("%,.2f", annualStats.get(ii, 0));
-            String smd = String.format("%,.2f", annualStats.get(ii, 1));
-            System.out.println(syear + " PnL: " + spnl + ", MaxDrawdown: " + smd);
-            avgPnl.add(annualStats.get(ii, 0));
-            avgDrawdown.add(Math.abs(annualStats.get(ii, 1)));
-         }
-         
-         System.out.println();
-         
-         String spnl = String.format("%,.2f", avgPnl.get());
-         String smd = String.format("%,.2f", avgDrawdown.get());
-         double gainToPain = avgPnl.get() / avgDrawdown.get();
-         System.out.println("Avg PnL: " + spnl + ", Avg DD: " + smd + ", Gain to Pain: " + String.format("%.4f", gainToPain));
-      } else {
-         System.out.println();
-      }
-      
-      if(annualStats2.size() > 0) {
          System.out.println();
          Average avgPnl = new Average();
          Average avgPnlPct = new Average();
          Average avgDD = new Average();
          Average avgDDPct = new Average();
-         for(int ii = 0; ii < annualStats2.size(); ++ii) {
-            String yearStr = annualStats2.getTimestamp(ii).format(DateTimeFormatter.ofPattern("yyyy"));
-            String pnlStr = String.format("%,d", Math.round(annualStats2.get(ii, 0)));
-            String pnlPctStr = String.format("%.2f%%", annualStats2.get(ii, 1)*100.0);
-            String endEqStr = String.format("%,d", Math.round(annualStats2.get(ii, 2)));
-            String ddStr = String.format("%,.2f", annualStats2.get(ii, 3));
-            String ddPctStr = String.format("%.2f%%", annualStats2.get(ii, 4)*100.0);
+         for(int ii = 0; ii < annualStats.size(); ++ii) {
+            String yearStr = annualStats.getTimestamp(ii).format(DateTimeFormatter.ofPattern("yyyy"));
+            String pnlStr = String.format("$%,d", Math.round(annualStats.get(ii, 0)));
+            String pnlPctStr = String.format("%.2f%%", annualStats.get(ii, 1)*100.0);
+            String endEqStr = String.format("$%,d", Math.round(annualStats.get(ii, 2)));
+            String ddStr = String.format("$%,d", Math.round(annualStats.get(ii, 3)));
+            String ddPctStr = String.format("%.2f%%", annualStats.get(ii, 4)*100.0);
             System.out.println(yearStr + " PnL: " + pnlStr + ", PnL Pct: " + pnlPctStr +
                   ", End Equity: " + endEqStr + ", MaxDD: " + ddStr +
                   ", Pct MaxDD: " + ddPctStr);
-            avgPnl.add(annualStats2.get(ii, 0));
-            avgPnlPct.add(annualStats2.get(ii, 1));
-            avgDD.add(Math.abs(annualStats2.get(ii,3)));
-            avgDDPct.add(Math.abs(annualStats2.get(ii, 4)));
+            avgPnl.add(annualStats.get(ii, 0));
+            avgPnlPct.add(annualStats.get(ii, 1));
+            avgDD.add(Math.abs(annualStats.get(ii,3)));
+            avgDDPct.add(Math.abs(annualStats.get(ii, 4)));
          }
          
          System.out.println();
          
-         String pnlStr = String.format("%,d", Math.round(avgPnl.get()));
+         String pnlStr = String.format("$%,d", Math.round(avgPnl.get()));
          String pnlPctStr = String.format("%.2f%%", avgPnlPct.get()*100.0);
-         String ddStr = String.format("%,d", Math.round(avgDD.get()));
+         String ddStr = String.format("$%,d", Math.round(avgDD.get()));
          String ddPctStr = String.format("%.2f%%", avgDDPct.get()*100.0);
          double gainToPain = avgPnl.get() / avgDD.get();
          System.out.println("Avg PnL: " + pnlStr + ", Pct Avg PnL: " + pnlPctStr + 
@@ -129,64 +106,62 @@ public class StrategyBacktest {
       }
       
       // Global statistics
-      LocalDateTime maxEquityDateTime = LocalDateTime.MIN;
-      double maxEquity = Double.MIN_VALUE;
-      double equity = 0.0;
+      LocalDateTime maxDateTime = LocalDateTime.MIN;
+      double maxEndEq = Double.MIN_VALUE;
       
-      Series pnl = strategy.getPnl();
-      for(int ii = 0; ii < pnl.size(); ++ii) {
-         equity += pnl.get(ii);
-         if(equity > maxEquity) {
-            maxEquity = equity;
-            maxEquityDateTime = pnl.getTimestamp(ii);
+      Series equity = strategy.getEquity();
+      for(int ii = 0; ii < equity.size(); ++ii) {
+         if(equity.get(ii) > maxEndEq) {
+            maxEndEq = equity.get(ii);
+            maxDateTime = equity.getTimestamp(ii);
          }
       }
       
-      double lastDrawdown = maxEquity - equity;
+      double lastDD = maxEndEq - equity.get(equity.size()-1);
+      double lastDDPct = lastDD/maxEndEq*100;
       
       System.out.println(
             "\n" +
-            "Total equity peak (" + maxEquityDateTime.format(DateTimeFormatter.ISO_DATE) + "): " + String.format("%,.2f", maxEquity) +
+            "Total equity peak [" + maxDateTime.format(DateTimeFormatter.ISO_DATE) + "]: " + String.format("$%,d", Math.round(maxEndEq)) +
             "\n" +
-            "Current Drawdown: " + String.format("%,.2f", lastDrawdown));
+            String.format("Current Drawdown: $%,d [%.2f%%]", Math.round(lastDD), lastDDPct));
       
-      if(pnl.size() > 2) {
-         int ii = pnl.size() - 1;
+      if(equity.size() > 2) {
+         int ii = equity.size() - 1;
          int jj = ii - 1;
          
-         for(; jj >= 0 && pnl.getTimestamp(jj).getYear() == pnl.getTimestamp(ii).getYear(); --jj) {
+         for(; jj >= 0 && equity.getTimestamp(jj).getYear() == equity.getTimestamp(ii).getYear(); --jj) {
             
          }
          
-         if(pnl.getTimestamp(jj).getYear() != pnl.getTimestamp(ii).getYear()) {
+         if(equity.getTimestamp(jj).getYear() != equity.getTimestamp(ii).getYear()) {
             ++jj;
-            maxEquityDateTime = pnl.getTimestamp(jj);
-            equity = pnl.get(jj);
-            maxEquity = pnl.get(jj);
-            for(++jj; jj < pnl.size(); ++jj) {
-               equity += pnl.get(jj);
-               if(equity > maxEquity) {
-                  maxEquity = equity;
-                  maxEquityDateTime = pnl.getTimestamp(jj);
+            maxDateTime = equity.getTimestamp(jj);
+            maxEndEq = equity.get(jj);
+            for(++jj; jj < equity.size(); ++jj) {
+               if(equity.get(jj) > maxEndEq) {
+                  maxEndEq = equity.get(jj);
+                  maxDateTime = equity.getTimestamp(jj);
                }
             }
             
-            lastDrawdown = maxEquity - equity;
+            lastDD = maxEndEq - equity.get(equity.size()-1);
+            lastDDPct = lastDD/maxEndEq*100;
             
             System.out.println(
                   "\n" +
-                  Integer.toString(pnl.getTimestamp(ii).getYear()) + " equity peak (" + 
-                  maxEquityDateTime.format(DateTimeFormatter.ISO_DATE) + "): " + String.format("%,.2f", maxEquity) +
+                  Integer.toString(equity.getTimestamp(ii).getYear()) + " equity peak [" + 
+                  maxDateTime.format(DateTimeFormatter.ISO_DATE) + "]: " + String.format("$%,d", Math.round(maxEndEq)) +
                   "\n" +
-                  "Current Drawdown: " + String.format("%,.2f", lastDrawdown));
+                  String.format("Current Drawdown: $%,d [%.2f%%]", Math.round(lastDD), lastDDPct));
          }
       }
       
       System.out.println();
       
       TradeSummary summary = strategy.getSummary("TOTAL", "All");
-      System.out.println("Avg Trade PnL: " + String.format("%,.2f", summary.averageTradePnl) +
-                         ", Max DD: " + String.format("%,.2f", summary.maxDrawdown) +
+      System.out.println("Avg Trade PnL: " + String.format("$%,d", Math.round(summary.averageTradePnl)) +
+                         ", Max DD: " + String.format("$%,d", Math.round(summary.maxDrawdown)) +
                          ", Num Trades: " + Long.toString(summary.numTrades));
    }
    

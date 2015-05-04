@@ -118,14 +118,14 @@ public class HistoricalReplay implements IBroker, IBarListener {
    
    private void processOrders(InstrumentCB icb, Tick tick, boolean executeOnLimitOrStop) {
       // Scan all orders and check for a fill against the current tick. The execution
-      // time must be different, hence we add nano seconds to the tick at each step.
+      // time must be different, hence we add a microsecond to the tick at each step.
       LocalDateTime ldt = tick.getDateTime();
       for(Order order : icb.orders) {
          long previousPosition = icb.position.quantity;
          OrderFill of = order.tryFill(tick, previousPosition, executeOnLimitOrStop);
          if(of != null) {
             // We have an execution, bump up the timestamp
-            ldt = ldt.plusNanos(1);
+            ldt = ldt.plusNanos(1000);
 
             // Currently we only support single-entry and single-exit positions.
             if(previousPosition != 0 && of.getPosition() != 0) {

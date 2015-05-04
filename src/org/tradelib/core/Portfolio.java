@@ -75,10 +75,11 @@ public class Portfolio {
       }
    }
    
+   private TreeMap<LocalDateTime, Summary> summaries;
+   
    private class InstrumentData {
       public ArrayList<Transaction> transactions;
       public ArrayList<PositionPnl> positionPnls;
-      public TreeMap<LocalDateTime, Summary> summaries;
       
       // The last processed transaction
       public int lastTxn;
@@ -108,11 +109,13 @@ public class Portfolio {
    public Portfolio(String name) {
       this.name_ = name;
       this.instrumentMap = new HashMap<String, InstrumentData>();
+      this.summaries = new TreeMap<LocalDateTime, Portfolio.Summary>();
    }
    
    public Portfolio() {
       this.name_ = DEFAULT_NAME;
       this.instrumentMap = new HashMap<String, InstrumentData>();
+      this.summaries = new TreeMap<LocalDateTime, Portfolio.Summary>();
    }
    
    public void addInstrument(Instrument i) {
@@ -140,9 +143,9 @@ public class Portfolio {
          double perUnitFee = transaction.fees / Math.abs(transaction.quantity);
          addTransaction(i, transaction.ts, -ppq, transaction.price, perUnitFee * Math.abs(ppq));
 
-         // Adjust the inputs to reflect what's left to transact, increase the 
-         // date time by a bit to keep the uniqueness in the transaction set.
-         transaction.ts = transaction.ts.plusNanos(1);
+         // Adjust the inputs to reflect what's left to transact, increase the date
+         // time by a microsecond to keep the uniqueness in the transaction set.
+         transaction.ts = transaction.ts.plusNanos(1000);
          transaction.quantity += ppq;
          ppq = 0;
          transaction.fees = perUnitFee * Math.abs(transaction.quantity); 
@@ -189,7 +192,7 @@ public class Portfolio {
       addTransaction(e.getInstrument(), e.getDateTime(), e.getQuantity(), e.getPrice(), e.getFees());
    }
    
-   public void markSummary(TreeMap<LocalDateTime, Summary> summaries, PositionPnl posPnl) {
+   public void markSummary(PositionPnl posPnl) {
       Summary ss = summaries.get(posPnl.ts);
       if(ss == null) {
          ss = new Summary(posPnl.ts);
@@ -197,8 +200,8 @@ public class Portfolio {
       
       ss.grossValue += Math.abs(posPnl.positionValue);
       ss.netValue += posPnl.positionValue;
-      if(posPnl.positionValue < 0.0) ss.longValue += posPnl.positionValue;
-      else if(posPnl.positionValue > 0.0) ss.shortValue += posPnl.positionValue;
+      if(posPnl.positionValue > 0.0) ss.longValue += posPnl.positionValue;
+      else if(posPnl.positionValue < 0.0) ss.shortValue += posPnl.positionValue;
       
       ss.realizedPnl += posPnl.realizedPnl;
       ss.unrealizedPnl += posPnl.unrealizedPnl;
@@ -252,11 +255,12 @@ public class Portfolio {
          posPnl.unrealizedPnl = posPnl.grossPnl - txn.grossPnl;
          posPnl.netPnl = posPnl.grossPnl + txn.fees;
 
+         assert posPnl.ts.isAfter(lastPnl.ts);
          idata.positionPnls.add(posPnl);
          result.add(posPnl);
          lastPnl = posPnl;
          
-         markSummary(idata.summaries, posPnl);
+         markSummary(posPnl);
          
          ++txnId;
       }
@@ -279,11 +283,12 @@ public class Portfolio {
          posPnl.unrealizedPnl = posPnl.grossPnl - txn.grossPnl;
          posPnl.netPnl = posPnl.grossPnl + txn.fees;
 
+         assert posPnl.ts.isAfter(lastPnl.ts);
          idata.positionPnls.add(posPnl);
          result.add(posPnl);
          lastPnl = posPnl;
          
-         markSummary(idata.summaries, posPnl);
+         markSummary(posPnl);
          
          ++txnId;
       } else {
@@ -301,11 +306,12 @@ public class Portfolio {
          posPnl.unrealizedPnl = posPnl.grossPnl;
          posPnl.netPnl = posPnl.grossPnl;
 
+         assert posPnl.ts.isAfter(lastPnl.ts);
          idata.positionPnls.add(posPnl);
          result.add(posPnl);
          lastPnl = posPnl;
          
-         markSummary(idata.summaries, posPnl);
+         markSummary(posPnl);
       }
       
       // Update the price
@@ -423,10 +429,12 @@ public class Portfolio {
     * @return The PnL series
     */
    Series getPnl(Instrument instrument) {
-      TreeMap<LocalDateTime, Summary> summaries = getInstrumentData(instrument).summaries;
+      List<PositionPnl> positionPnls = getInstrumentData(instrument).positionPnls;
       Series ss = new Series(1);
-      for(Entry<LocalDateTime, Summary> entry : summaries.entrySet()) {
-         ss.append(entry.getKey(), entry.getValue().netPnl);
+      // Skip the first PositionPnl - it's artificial
+      for(int ii = 1; ii < positionPnls.size(); ++ii) {
+         PositionPnl ppnl = positionPnls.get(ii);
+         ss.append(ppnl.ts, ppnl.netPnl);
       }
       return ss;
    }
@@ -752,9 +760,9 @@ public class Portfolio {
       return instrumentMap.keySet();
    }
    
-   public Series getSummary(Instrument instrument) {
+   public Series getSummary() {
       Series result = new Series(9);
-      for(Summary ss : instrumentMap.get(instrument.getSymbol()).summaries.values()) {
+      for(Summary ss : summaries.values()) {
          result.append(ss.ts, ss.longValue, ss.shortValue, ss.netValue,
                ss.grossValue, ss.txnFees, ss.realizedPnl, ss.unrealizedPnl,
                ss.grossPnl, ss.netPnl);
@@ -762,6 +770,23 @@ public class Portfolio {
       result.setNames("long.value", "short.value", "net.value", "gross.value",
                       "fees", "realized.pnl", "unrealized.pnl",
                       "gross.pnl", "net.pnl");
+      return result;
+   }
+   
+   public Series getPositionPnls(Instrument instrument) {
+      Series result = new Series(9);
+      List<PositionPnl> posPnls = getInstrumentData(instrument).positionPnls;
+      // Skip the first PositionPnl - it's artificial
+      for(int ii = 1; ii < posPnls.size(); ++ii) {
+         PositionPnl posPnl = posPnls.get(ii);
+         result.append(posPnl.ts, posPnl.positionQuantity, posPnl.positionValue,
+                       posPnl.positionAverageCost, posPnl.transactionValue,
+                       posPnl.realizedPnl, posPnl.unrealizedPnl,
+                       posPnl.grossPnl, posPnl.netPnl, posPnl.fees);
+      }
+      
+      result.setNames("quantity", "value", "avg.cost", "txn.value",
+               "realized.pnl", "unrealized.pnl", "gross.pnl", "net.pnl", "fees");
       return result;
    }
 }

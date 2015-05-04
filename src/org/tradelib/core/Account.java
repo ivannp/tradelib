@@ -262,11 +262,19 @@ public class Account {
       return result;
    }
    
-   public Series getPortfolioSummary(String portfolio, Instrument instrument) {
-      return portfolios.get(portfolio).portfolio.getSummary(instrument);
+   public Series getPortfolioSummary(String portfolio) {
+      return portfolios.get(portfolio).portfolio.getSummary();
    }
    
-   public Series getPortfolioSummary(Instrument instrument) {
-      return getPortfolioSummary(Portfolio.DEFAULT_NAME, instrument);
+   public Series getPortfolioSummary() {
+      return getPortfolioSummary(Portfolio.DEFAULT_NAME);
+   }
+   
+   public Series getPositionPnls(String portfolio, Instrument instrument) {
+      return portfolios.get(portfolio).portfolio.getPositionPnls(instrument);
+   }
+   
+   public Series getPositionPnls(Instrument instrument) {
+      return getPositionPnls(Portfolio.DEFAULT_NAME, instrument);
    }
 }

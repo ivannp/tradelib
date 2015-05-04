@@ -32,7 +32,7 @@ SELECT * FROM strategies;
 CREATE TABLE IF NOT EXISTS yahoo_daily(
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	symbol varchar(10) not null,
-	ts DATETIME NOT NULL,
+	ts DATETIME(6) NOT NULL,
 	open DECIMAL(18,8),
 	high DECIMAL(18,8),
 	low DECIMAL(18,8),
@@ -42,16 +42,14 @@ CREATE TABLE IF NOT EXISTS yahoo_daily(
     UNIQUE KEY yd_unique (symbol, ts))
 ENGINE InnoDB;
 
-INSERT INTO strategies values (1, 'ARMA/GARCH');
-
 CREATE TABLE IF NOT EXISTS executions(
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
 	symbol varchar(10) NOT NULL,
-	ts DATETIME NOT NULL,
+	ts DATETIME(6) NOT NULL,
 	price DOUBLE,
 	quantity BIGINT NOT NULL,
-	signal VARCHAR(64))
+	signal_name VARCHAR(64))
 ENGINE InnoDB;
 
 # DROP TABLE IF EXISTS trade_stats;
@@ -60,8 +58,8 @@ CREATE TABLE IF NOT EXISTS trades(
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
 	symbol VARCHAR(10) NOT NULL,
-	start DATETIME NOT NULL,
-	end DATETIME NOT NULL,
+	start DATETIME(6) NOT NULL,
+	end DATETIME(6) NOT NULL,
 	initial_position BIGINT NOT NULL,
 	max_position BIGINT NOT NULL,
 	num_transactions BIGINT NOT NULL,
@@ -75,16 +73,16 @@ CREATE TABLE IF NOT EXISTS pnls(
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
 	symbol VARCHAR(10) NOT NULL,
-	ts DATETIME NOT NULL,
+	ts DATETIME(6) NOT NULL,
 	pnl DOUBLE NOT NULL,
     UNIQUE KEY pnls_unique (strategy_id, symbol, ts))
 ENGINE InnoDB;
 
-DROP TABLE IF EXISTS end_equity;
+# DROP TABLE IF EXISTS end_equity;
 CREATE TABLE IF NOT EXISTS end_equity(
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
-	ts DATETIME NOT NULL,
+	ts DATETIME(6) NOT NULL,
 	equity DOUBLE NOT NULL,
     UNIQUE KEY end_equity_unique (strategy_id, ts))
 ENGINE InnoDB;
@@ -116,12 +114,12 @@ CREATE TABLE IF NOT EXISTS trade_summaries(
     UNIQUE KEY trade_summaries_unique (strategy_id, symbol, type))
 ENGINE InnoDB;
 
-DROP TABLE IF EXISTS strategy_positions;
+# DROP TABLE IF EXISTS strategy_positions;
 CREATE TABLE IF NOT EXISTS strategy_positions (
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
 	symbol VARCHAR(10) NOT NULL,
-	ts DATETIME NOT NULL,
+	ts DATETIME(6) NOT NULL,
    position DOUBLE NOT NULL,
    last_close DECIMAL(18,8),
    last_ts DATETIME,
