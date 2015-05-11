@@ -290,6 +290,127 @@ CREATE TABLE IF NOT EXISTS kv (
    UNIQUE INDEX kv_unique(key_text))
 ENGINE = InnoDB;
 
+DROP TABLE IF EXISTS categories;
+CREATE TABLE categories (
+   id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+   name VARCHAR(64) NOT NULL,
+   ord INTEGER NOT NULL DEFAULT '10')
+ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO categories VALUES (1,'Grains',1);
+INSERT INTO categories VALUES (2,'Meats',10);
+INSERT INTO categories VALUES (3,'Softs',20);
+INSERT INTO categories VALUES (4,'Metals',30);
+INSERT INTO categories VALUES (5,'Oils',40);
+INSERT INTO categories VALUES (6,'Currencies',50);
+INSERT INTO categories VALUES (7,'Bonds',60);
+INSERT INTO categories VALUES (8,'Indexes',70);
+
+DROP TABLE IF EXISTS instrument_visiable;
+CREATE TABLE instrument_visiable (
+  id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+  categories_id INTEGER NOT NULL,
+  instrument_id INTEGER NOT NULL,
+  ord INTEGER NOT NULL DEFAULT '10')
+ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO instrument_visiable VALUES (64,1,40,1);
+INSERT INTO instrument_visiable VALUES (65,1,37,2);
+INSERT INTO instrument_visiable VALUES (66,1,38,3);
+INSERT INTO instrument_visiable VALUES (67,1,41,4);
+INSERT INTO instrument_visiable VALUES (68,1,39,5);
+INSERT INTO instrument_visiable VALUES (69,1,43,6);
+INSERT INTO instrument_visiable VALUES (70,1,18,7);
+INSERT INTO instrument_visiable VALUES (71,1,42,8);
+INSERT INTO instrument_visiable VALUES (73,2,53,21);
+INSERT INTO instrument_visiable VALUES (74,2,52,22);
+INSERT INTO instrument_visiable VALUES (75,2,51,23);
+INSERT INTO instrument_visiable VALUES (76,3,17,31);
+INSERT INTO instrument_visiable VALUES (77,3,7,32);
+INSERT INTO instrument_visiable VALUES (78,3,5,33);
+INSERT INTO instrument_visiable VALUES (79,3,16,34);
+INSERT INTO instrument_visiable VALUES (80,3,27,35);
+INSERT INTO instrument_visiable VALUES (81,3,19,36);
+INSERT INTO instrument_visiable VALUES (82,4,48,41);
+INSERT INTO instrument_visiable VALUES (83,4,36,42);
+INSERT INTO instrument_visiable VALUES (84,4,35,43);
+INSERT INTO instrument_visiable VALUES (85,4,49,44);
+INSERT INTO instrument_visiable VALUES (86,4,50,45);
+INSERT INTO instrument_visiable VALUES (87,5,44,51);
+INSERT INTO instrument_visiable VALUES (88,5,46,52);
+INSERT INTO instrument_visiable VALUES (89,5,45,53);
+INSERT INTO instrument_visiable VALUES (90,5,47,54);
+INSERT INTO instrument_visiable VALUES (91,6,14,61);
+INSERT INTO instrument_visiable VALUES (92,6,15,62);
+INSERT INTO instrument_visiable VALUES (93,6,28,63);
+INSERT INTO instrument_visiable VALUES (94,6,4,64);
+INSERT INTO instrument_visiable VALUES (95,6,9,65);
+INSERT INTO instrument_visiable VALUES (96,6,6,66);
+INSERT INTO instrument_visiable VALUES (97,6,1,67);
+INSERT INTO instrument_visiable VALUES (98,6,22,68);
+INSERT INTO instrument_visiable VALUES (99,7,32,71);
+INSERT INTO instrument_visiable VALUES (100,7,31,72);
+INSERT INTO instrument_visiable VALUES (101,7,13,73);
+INSERT INTO instrument_visiable VALUES (102,7,30,74);
+INSERT INTO instrument_visiable VALUES (103,8,12,81);
+INSERT INTO instrument_visiable VALUES (104,8,10,82);
+INSERT INTO instrument_visiable VALUES (105,8,11,83);
+INSERT INTO instrument_visiable VALUES (106,8,21,84);
+INSERT INTO instrument_visiable VALUES (107,8,33,85);
+INSERT INTO instrument_visiable VALUES (108,8,25,86);
+
+INSERT INTO instrument_visiable VALUES (201,1,125,1);
+INSERT INTO instrument_visiable VALUES (202,1,104,2);
+INSERT INTO instrument_visiable VALUES (203,1,137,3);
+INSERT INTO instrument_visiable VALUES (204,1,141,4);
+INSERT INTO instrument_visiable VALUES (205,1,102,5);
+INSERT INTO instrument_visiable VALUES (206,1,146,6);
+INSERT INTO instrument_visiable VALUES (207,1,121,7);
+INSERT INTO instrument_visiable VALUES (208,1,136,8);
+
+INSERT INTO instrument_visiable VALUES (209,2,124,21);
+INSERT INTO instrument_visiable VALUES (210,2,123,22);
+INSERT INTO instrument_visiable VALUES (211,2,114,23);
+
+INSERT INTO instrument_visiable VALUES (212,3,120,31);
+INSERT INTO instrument_visiable VALUES (213,3,108,32);
+INSERT INTO instrument_visiable VALUES (214,3,105,33);
+INSERT INTO instrument_visiable VALUES (215,3,131,34);
+INSERT INTO instrument_visiable VALUES (216,3,138,35);
+INSERT INTO instrument_visiable VALUES (217,3,122,36);
+
+INSERT INTO instrument_visiable VALUES (218,4,117,41);
+INSERT INTO instrument_visiable VALUES (219,4,140,42);
+INSERT INTO instrument_visiable VALUES (220,4,116,43);
+INSERT INTO instrument_visiable VALUES (221,4,132,44);
+INSERT INTO instrument_visiable VALUES (222,4,133,45);
+
+INSERT INTO instrument_visiable VALUES (223,5,107,51);
+INSERT INTO instrument_visiable VALUES (224,5,118,51);
+INSERT INTO instrument_visiable VALUES (225,5,135,51);
+INSERT INTO instrument_visiable VALUES (226,5,127,51);
+
+INSERT INTO instrument_visiable VALUES (227,6,109,61);
+INSERT INTO instrument_visiable VALUES (228,6,119,62);
+INSERT INTO instrument_visiable VALUES (229,6,139,63);
+INSERT INTO instrument_visiable VALUES (230,6,110,64);
+INSERT INTO instrument_visiable VALUES (231,6,106,65);
+INSERT INTO instrument_visiable VALUES (232,6,101,66);
+INSERT INTO instrument_visiable VALUES (233,6,125,67);
+
+INSERT INTO instrument_visiable VALUES (234,7,145,71);
+INSERT INTO instrument_visiable VALUES (235,7,144,72);
+INSERT INTO instrument_visiable VALUES (236,7,115,73);
+INSERT INTO instrument_visiable VALUES (237,7,143,74);
+INSERT INTO instrument_visiable VALUES (238,7,111,75);
+
+INSERT INTO instrument_visiable VALUES (239,8,113,81);
+INSERT INTO instrument_visiable VALUES (240,8,129,82);
+INSERT INTO instrument_visiable VALUES (241,8,142,83);
+INSERT INTO instrument_visiable VALUES (242,8,112,84);
+INSERT INTO instrument_visiable VALUES (243,8,149,85);
+INSERT INTO instrument_visiable VALUES (244,8,128,81);
+
 DROP USER 'qboss'@'localhost';
 CREATE USER 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.holidays TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
@@ -300,3 +421,5 @@ GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_rev TO 'qboss'@'localhost' 
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_non TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.csi_bars TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.kv TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.categories TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.instrument_visiable TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
