@@ -89,6 +89,9 @@ public class Portfolio {
       // transaction occurs.
       public double lastPrice;
       
+      // The PnL for this instrument - computed accumulatively.
+      public Pnl pnl;
+      
       public InstrumentData() {
          transactions = new ArrayList<Transaction>();
          transactions.add(new Transaction(LocalDateTime.MIN));
@@ -96,10 +99,10 @@ public class Portfolio {
          lastTxn = 0;
          lastPrice = Double.NaN;
          
+         pnl = new Pnl();
+         
          positionPnls = new ArrayList<PositionPnl>();
          positionPnls.add(new PositionPnl());
-         
-         summaries = new TreeMap<LocalDateTime, Summary>();
       }
    }
    
@@ -254,6 +257,9 @@ public class Portfolio {
          posPnl.realizedPnl = txn.grossPnl;
          posPnl.unrealizedPnl = posPnl.grossPnl - txn.grossPnl;
          posPnl.netPnl = posPnl.grossPnl + txn.fees;
+         
+         // Accumulate the unrealized PnL
+         idata.pnl.add(posPnl.realizedPnl, posPnl.unrealizedPnl);
 
          assert posPnl.ts.isAfter(lastPnl.ts);
          idata.positionPnls.add(posPnl);
@@ -282,6 +288,9 @@ public class Portfolio {
          posPnl.realizedPnl = txn.grossPnl;
          posPnl.unrealizedPnl = posPnl.grossPnl - txn.grossPnl;
          posPnl.netPnl = posPnl.grossPnl + txn.fees;
+         
+         // Accumulate the unrealized PnL
+         idata.pnl.add(posPnl.realizedPnl, posPnl.unrealizedPnl);
 
          assert posPnl.ts.isAfter(lastPnl.ts);
          idata.positionPnls.add(posPnl);
@@ -305,6 +314,9 @@ public class Portfolio {
          posPnl.realizedPnl = 0.0;
          posPnl.unrealizedPnl = posPnl.grossPnl;
          posPnl.netPnl = posPnl.grossPnl;
+         
+         // Accumulate the unrealized PnL
+         idata.pnl.add(posPnl.realizedPnl, posPnl.unrealizedPnl);
 
          assert posPnl.ts.isAfter(lastPnl.ts);
          idata.positionPnls.add(posPnl);
@@ -363,6 +375,9 @@ public class Portfolio {
             ppnl.realizedPnl = txn.grossPnl;
             ppnl.unrealizedPnl = ppnl.grossPnl - txn.grossPnl;
             ppnl.netPnl = ppnl.grossPnl + txn.fees;
+            
+            // Accumulate the unrealized PnL
+            id.pnl.add(ppnl.realizedPnl, ppnl.unrealizedPnl);
 
             id.positionPnls.add(ppnl);
             lastPnl = ppnl;
@@ -406,6 +421,9 @@ public class Portfolio {
             ppnl.realizedPnl = txn.grossPnl;
             ppnl.unrealizedPnl = ppnl.grossPnl - txn.grossPnl;
             ppnl.netPnl = ppnl.grossPnl + txn.fees;
+            
+            // Accumulate the unrealized PnL
+            id.pnl.add(ppnl.realizedPnl, ppnl.unrealizedPnl);
 
             id.positionPnls.add(ppnl);
             lastPnl = ppnl;
@@ -428,7 +446,7 @@ public class Portfolio {
     * @param instrument
     * @return The PnL series
     */
-   Series getPnl(Instrument instrument) {
+   Series getPnlSeries(Instrument instrument) {
       List<PositionPnl> positionPnls = getInstrumentData(instrument).positionPnls;
       Series ss = new Series(1);
       // Skip the first PositionPnl - it's artificial
@@ -735,7 +753,7 @@ public class Portfolio {
    
    public TradingResults getTradingResults(Instrument instrument) {
       TradingResults tr = new TradingResults();
-      tr.pnl = getPnl(instrument);
+      tr.pnl = getPnlSeries(instrument);
       tr.stats = getTrades(instrument);
       TradeSummaryBuilder shorts = new TradeSummaryBuilder(tr.pnl);
       TradeSummaryBuilder longs = new TradeSummaryBuilder(tr.pnl);
@@ -788,5 +806,16 @@ public class Portfolio {
       result.setNames("quantity", "value", "avg.cost", "txn.value",
                "realized.pnl", "unrealized.pnl", "gross.pnl", "net.pnl", "fees");
       return result;
+   }
+   
+   /**
+    * Obtains the accumulative PnL for this instrument. That's the call to use
+    * to report open equity PnL.
+    * 
+    * @param instrument
+    * @return
+    */
+   public Pnl getPnl(Instrument instrument) {
+      return getInstrumentData(instrument).pnl;
    }
 }

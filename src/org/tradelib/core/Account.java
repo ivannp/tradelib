@@ -232,12 +232,20 @@ public class Account {
       return getPortfolioSymbols(Portfolio.DEFAULT_NAME);
    }
    
-   public Series getInstrumentPnl(String portfolio, Instrument instrument) {
+   public Series getPnlSeries(String portfolio, Instrument instrument) {
+      return portfolios.get(portfolio).portfolio.getPnlSeries(instrument);
+   }
+   
+   public Series getPnlSeries(Instrument instrument) {
+      return getPnlSeries(Portfolio.DEFAULT_NAME, instrument);
+   }
+   
+   public Pnl getPnl(String portfolio, Instrument instrument) {
       return portfolios.get(portfolio).portfolio.getPnl(instrument);
    }
    
-   public Series getInstrumentPnl(Instrument instrument) {
-      return getInstrumentPnl(Portfolio.DEFAULT_NAME, instrument);
+   public Pnl getPnl(Instrument instrument) {
+      return getPnl(Portfolio.DEFAULT_NAME, instrument);
    }
    
    public TradingResults getPortfolioTradingResults(String portfolio, Instrument instrument) {

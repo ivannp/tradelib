@@ -182,7 +182,7 @@ public abstract class Strategy implements IBrokerListener {
    
    public void writeTrades(Instrument instrument) throws Exception {
       BarHistory history = barData.getHistory(instrument.getSymbol(), Duration.ofDays(1));
-      Series pnl = account.getInstrumentPnl(instrument);
+      Series pnl = account.getPnlSeries(instrument);
       if(pnl.size() == 0) return;
       
       connectIfNecessary();

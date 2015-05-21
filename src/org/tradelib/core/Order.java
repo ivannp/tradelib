@@ -436,12 +436,33 @@ public class Order {
       if(getQuantity() != POSITION_QUANTITY) {
          jo.addProperty("quantity", getQuantity());
       }
-      if(getLimit() != Double.NaN) {
+      if(!Double.isNaN(getLimit())) {
          jo.addProperty("limit_price", getLimit());
       }
-      if(getStop() != Double.NaN) {
+      if(!Double.isNaN(getStop())) {
          jo.addProperty("stop_price", getStop());
       }
       return jo;
+   }
+   
+   public Order addLimitToStop(double offset) {
+      if(this.type == Type.ENTER_LONG_STOP) {
+         this.limitPrice = this.stopPrice;
+         this.stopPrice -= offset;
+         this.type = Type.ENTER_LONG_STOP_LIMIT;
+      } else if(this.type == Type.ENTER_SHORT_STOP) {
+         this.limitPrice = this.stopPrice;
+         this.stopPrice += offset;
+         this.type = Type.ENTER_SHORT_STOP_LIMIT;
+      } else if(this.type == Type.EXIT_SHORT_STOP) {
+         this.limitPrice = this.stopPrice;
+         this.stopPrice -= offset;
+         this.type = Type.EXIT_SHORT_STOP_LIMIT;
+      } else if(this.type == Type.EXIT_LONG_STOP) {
+         this.limitPrice = this.stopPrice;
+         this.stopPrice += offset;
+         this.type = Type.EXIT_LONG_STOP_LIMIT;
+      }
+      return this;
    }
 }
