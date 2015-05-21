@@ -1,7 +1,9 @@
 package org.tradelib.apps;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.TreeMap;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -16,6 +18,9 @@ import org.tradelib.core.Series;
 import org.tradelib.core.Strategy;
 import org.tradelib.core.TimeSeries;
 import org.tradelib.core.TradeSummary;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 public class StrategyBacktest {
 
@@ -61,108 +66,81 @@ public class StrategyBacktest {
       
       System.out.println();
       
-      // Compute total statistics
+      // Write the strategy totals to the database
       strategy.totalTradeStats();
+      
+      // Write the strategy report to the database and obtain the JSON
+      // for writing it to the console.
+      JsonObject report = strategy.writeStrategyReport();
+      
+      JsonArray asa = report.getAsJsonArray("annual_stats");
+      
+      if(asa.size() > 0) {
+         // Sort the array
+         TreeMap<Integer, Integer> map = new TreeMap<Integer, Integer>();
+         for(int ii = 0; ii < asa.size(); ++ii) {
+            int year = asa.get(ii).getAsJsonObject().get("year").getAsInt();
+            map.put(year, ii);
+         }
 
-      // Short performance statistics for the report
-      
-      // Annual statistics
-      Series annualStats = strategy.getAnnualStats();
-      
-      if(annualStats.size() > 0) {
-         System.out.println();
-         Average avgPnl = new Average();
-         Average avgPnlPct = new Average();
-         Average avgDD = new Average();
-         Average avgDDPct = new Average();
-         for(int ii = 0; ii < annualStats.size(); ++ii) {
-            String yearStr = annualStats.getTimestamp(ii).format(DateTimeFormatter.ofPattern("yyyy"));
-            String pnlStr = String.format("$%,d", Math.round(annualStats.get(ii, 0)));
-            String pnlPctStr = String.format("%.2f%%", annualStats.get(ii, 1)*100.0);
-            String endEqStr = String.format("$%,d", Math.round(annualStats.get(ii, 2)));
-            String ddStr = String.format("$%,d", Math.round(annualStats.get(ii, 3)));
-            String ddPctStr = String.format("%.2f%%", annualStats.get(ii, 4)*100.0);
+         for(int id : map.values()) {
+            JsonObject jo = asa.get(id).getAsJsonObject();
+            String yearStr = String.valueOf(jo.get("year").getAsInt());
+            String pnlStr = String.format("$%,d", jo.get("pnl").getAsInt());
+            String pnlPctStr = String.format("%.2f%%", jo.get("pnl_pct").getAsDouble());
+            String endEqStr = String.format("$%,d", jo.get("end_equity").getAsInt());
+            String ddStr = String.format("$%,d", jo.get("maxdd").getAsInt());
+            String ddPctStr = String.format("%.2f%%", jo.get("pnl_pct").getAsDouble());
             System.out.println(yearStr + " PnL: " + pnlStr + ", PnL Pct: " + pnlPctStr +
                   ", End Equity: " + endEqStr + ", MaxDD: " + ddStr +
                   ", Pct MaxDD: " + ddPctStr);
-            avgPnl.add(annualStats.get(ii, 0));
-            avgPnlPct.add(annualStats.get(ii, 1));
-            avgDD.add(Math.abs(annualStats.get(ii,3)));
-            avgDDPct.add(Math.abs(annualStats.get(ii, 4)));
          }
          
-         System.out.println();
-         
-         String pnlStr = String.format("$%,d", Math.round(avgPnl.get()));
-         String pnlPctStr = String.format("%.2f%%", avgPnlPct.get()*100.0);
-         String ddStr = String.format("$%,d", Math.round(avgDD.get()));
-         String ddPctStr = String.format("%.2f%%", avgDDPct.get()*100.0);
-         double gainToPain = avgPnl.get() / avgDD.get();
-         System.out.println("Avg PnL: " + pnlStr + ", Pct Avg PnL: " + pnlPctStr + 
+         String pnlStr = String.format("$%,d", report.get("pnl").getAsInt());
+         String pnlPctStr = String.format("%.2f%%", report.get("pnl_pct").getAsDouble());
+         String ddStr = String.format("$%,d", report.get("maxdd").getAsInt());
+         String ddPctStr = String.format("%.2f%%", report.get("maxdd_pct").getAsDouble());
+         String gainToPainStr = String.format("%.4f", report.get("gain_to_pain").getAsDouble());
+         System.out.println("\nAvg PnL: " + pnlStr + ", Pct Avg PnL: " + pnlPctStr + 
                ", Avg DD: " + ddStr + ", Pct Avg DD: " + ddPctStr + 
-               ", Gain to Pain: " + String.format("%.4f", gainToPain));
+               ", Gain to Pain: " + gainToPainStr);
       } else {
          System.out.println();
       }
       
       // Global statistics
-      LocalDateTime maxDateTime = LocalDateTime.MIN;
-      double maxEndEq = Double.MIN_VALUE;
-      
-      Series equity = strategy.getEquity();
-      for(int ii = 0; ii < equity.size(); ++ii) {
-         if(equity.get(ii) > maxEndEq) {
-            maxEndEq = equity.get(ii);
-            maxDateTime = equity.getTimestamp(ii);
-         }
-      }
-      
-      double lastDD = maxEndEq - equity.get(equity.size()-1);
-      double lastDDPct = lastDD/maxEndEq*100;
-      
+      JsonObject jo = report.getAsJsonObject("total_peak");
+      String dateStr = jo.get("date").getAsString();
+      int maxEndEq = jo.get("equity").getAsInt();
+      jo = report.getAsJsonObject("total_maxdd");
+      double cash = jo.get("cash").getAsDouble();
+      double pct = jo.get("pct").getAsDouble();
       System.out.println(
             "\n" +
-            "Total equity peak [" + maxDateTime.format(DateTimeFormatter.ISO_DATE) + "]: " + String.format("$%,d", Math.round(maxEndEq)) +
+            "Total equity peak [" + dateStr + "]: " + String.format("$%,d", maxEndEq) +
             "\n" +
-            String.format("Current Drawdown: $%,d [%.2f%%]", Math.round(lastDD), lastDDPct));
+            String.format("Current Drawdown: $%,d [%.2f%%]", Math.round(cash), pct));
       
-      if(equity.size() > 2) {
-         int ii = equity.size() - 1;
-         int jj = ii - 1;
-         
-         for(; jj >= 0 && equity.getTimestamp(jj).getYear() == equity.getTimestamp(ii).getYear(); --jj) {
-            
-         }
-         
-         if(equity.getTimestamp(jj).getYear() != equity.getTimestamp(ii).getYear()) {
-            ++jj;
-            maxDateTime = equity.getTimestamp(jj);
-            maxEndEq = equity.get(jj);
-            for(++jj; jj < equity.size(); ++jj) {
-               if(equity.get(jj) > maxEndEq) {
-                  maxEndEq = equity.get(jj);
-                  maxDateTime = equity.getTimestamp(jj);
-               }
-            }
-            
-            lastDD = maxEndEq - equity.get(equity.size()-1);
-            lastDDPct = lastDD/maxEndEq*100;
-            
-            System.out.println(
-                  "\n" +
-                  Integer.toString(equity.getTimestamp(ii).getYear()) + " equity peak [" + 
-                  maxDateTime.format(DateTimeFormatter.ISO_DATE) + "]: " + String.format("$%,d", Math.round(maxEndEq)) +
-                  "\n" +
-                  String.format("Current Drawdown: $%,d [%.2f%%]", Math.round(lastDD), lastDDPct));
-         }
+      if(report.has("latest_peak") && report.has("latest_maxdd")) {
+         jo = report.getAsJsonObject("latest_peak");
+         LocalDate ld = LocalDate.parse(jo.get("date").getAsString(), DateTimeFormatter.ISO_DATE);
+         maxEndEq = jo.get("equity").getAsInt();
+         jo = report.getAsJsonObject("total_maxdd");
+         cash = jo.get("cash").getAsDouble();
+         pct = jo.get("pct").getAsDouble();
+         System.out.println(
+               "\n" +
+               Integer.toString(ld.getYear()) + " equity peak [" + 
+               ld.format(DateTimeFormatter.ISO_DATE) + "]: " + String.format("$%,d", maxEndEq) +
+               "\n" +
+               String.format("Current Drawdown: $%,d [%.2f%%]", Math.round(cash), pct));
       }
-      
+
       System.out.println();
       
-      TradeSummary summary = strategy.getSummary("TOTAL", "All");
-      System.out.println("Avg Trade PnL: " + String.format("$%,d", Math.round(summary.averageTradePnl)) +
-                         ", Max DD: " + String.format("$%,d", Math.round(summary.maxDrawdown)) +
-                         ", Num Trades: " + Long.toString(summary.numTrades));
+      System.out.println("Avg Trade PnL: " + String.format("$%,d", Math.round(report.get("avg_trade_pnl").getAsDouble())) +
+                         ", Max DD: " + String.format("$%,d", Math.round(report.get("maxdd").getAsDouble())) +
+                         ", Num Trades: " + Integer.toString(report.get("num_trades").getAsInt()));
    }
    
    private class PerformanceDetails {

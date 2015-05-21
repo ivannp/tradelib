@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS trade_summaries(
     UNIQUE KEY trade_summaries_unique (strategy_id, symbol, type))
 ENGINE InnoDB;
 
-# DROP TABLE IF EXISTS strategy_positions;
+DROP TABLE IF EXISTS strategy_positions;
 CREATE TABLE IF NOT EXISTS strategy_positions (
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
@@ -122,9 +122,18 @@ CREATE TABLE IF NOT EXISTS strategy_positions (
 	ts DATETIME(6) NOT NULL,
    position DOUBLE NOT NULL,
    last_close DECIMAL(18,8),
-   last_ts DATETIME,
+   last_ts DATETIME(6),
 	details TEXT,
-    UNIQUE INDEX strategy_positions_unique (strategy_id, symbol, ts))
+    UNIQUE INDEX strategy_positions_unique (strategy_id, symbol, last_ts))
+ENGINE InnoDB;
+
+DROP TABLE IF EXISTS strategy_report;
+CREATE TABLE IF NOT EXISTS strategy_report (
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	strategy_id INTEGER NOT NULL,
+	last_date DATETIME(6) NOT NULL,
+	report TEXT,
+    UNIQUE INDEX strategy_report_unique (strategy_id, last_date))
 ENGINE InnoDB;
 
 GRANT DELETE,INSERT,SELECT,UPDATE ON strategies TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
@@ -136,5 +145,6 @@ GRANT DELETE,INSERT,SELECT,UPDATE ON pnls TO 'qboss'@'localhost' IDENTIFIED BY '
 GRANT DELETE,INSERT,SELECT,UPDATE ON end_equity TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON trade_summaries TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON strategy_positions TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON strategy_report TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 
 COMMIT;

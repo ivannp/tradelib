@@ -41,6 +41,12 @@ public abstract class Strategy implements IBrokerListener {
    
    protected Connection connection = null;
    
+   protected LocalDateTime lastTimestamp = LocalDateTime.MIN;
+   
+   public LocalDateTime getLastTimestamp() {
+      return lastTimestamp;
+   }
+   
    protected void connectIfNecessary() throws SQLException {
       if(connection == null) {
          connection = DriverManager.getConnection(dbUrl);
@@ -98,11 +104,11 @@ public abstract class Strategy implements IBrokerListener {
       stmt.executeUpdate();
       stmt.close();
       
-      query = "DELETE FROM strategy_positions WHERE strategy_id=?"; 
-      stmt = connection.prepareStatement(query);
-      stmt.setLong(1, dbId);
-      stmt.executeUpdate();
-      stmt.close();
+//      query = "DELETE FROM strategy_positions WHERE strategy_id=?"; 
+//      stmt = connection.prepareStatement(query);
+//      stmt.setLong(1, dbId);
+//      stmt.executeUpdate();
+//      stmt.close();
       
       query = "DELETE FROM end_equity WHERE strategy_id=?"; 
       stmt = connection.prepareStatement(query);
@@ -357,6 +363,10 @@ public abstract class Strategy implements IBrokerListener {
       // null means the strategy is not interested in this symbol
       if(history != null) {
          onBarClosed(history, bar);
+      }
+      
+      if(bar.getDateTime().isAfter(lastTimestamp)) {
+         lastTimestamp = bar.getDateTime();
       }
    }
 
@@ -962,20 +972,23 @@ public abstract class Strategy implements IBrokerListener {
                            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                            .create();
          
-         String query = "INSERT INTO strategy_positions " +
-               "(strategy_id,symbol,ts,position,last_close,last_ts,details) values(?,?,?,?,?,?,?)";
+         String query = " INSERT INTO strategy_positions " +
+               " (strategy_id,symbol,ts,position,last_close,last_ts,details) " +
+               " VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE " +
+               " position=?,last_close=?,ts=?,details=?";
+         String jsonString = gson.toJson(jo);
          PreparedStatement stmt = con.prepareStatement(query);
          stmt.setLong(1, getStrategyId());
          stmt.setString(2, getSymbol());
          stmt.setTimestamp(3, Timestamp.valueOf(getDateTime()));
          stmt.setDouble(4, getPosition());
          stmt.setDouble(5, getLastClose());
-         if(getLastDateTime() != null) {
-            stmt.setTimestamp(6, Timestamp.valueOf(getLastDateTime()));
-         } else {
-            stmt.setNull(6, Types.TIMESTAMP);
-         }
-         stmt.setString(7, gson.toJson(jo));
+         stmt.setTimestamp(6, Timestamp.valueOf(getLastDateTime()));
+         stmt.setString(7, jsonString);
+         stmt.setDouble(8, getPosition());
+         stmt.setDouble(9, getLastClose());
+         stmt.setTimestamp(10, Timestamp.valueOf(getDateTime()));
+         stmt.setString(11, jsonString);
          
          stmt.executeUpdate();
          
@@ -1044,6 +1057,135 @@ public abstract class Strategy implements IBrokerListener {
       
       connection.commit();
       return summary;
+   }
+   
+   public JsonObject writeStrategyReport() throws Exception {
+      // Annual statistics
+      Series annualStats = getAnnualStats();
+      
+      JsonObject result = new JsonObject();
+      
+      if(annualStats.size() > 0) {
+      
+         Average avgPnl = new Average();
+         Average avgPnlPct = new Average();
+         Average avgDD = new Average();
+         Average avgDDPct = new Average();
+         JsonArray asa = new JsonArray();
+         
+         for(int ii = 0; ii < annualStats.size(); ++ii) {
+            JsonObject ajo = new JsonObject();
+            ajo.addProperty("year", annualStats.getTimestamp(ii).getYear());
+            ajo.addProperty("pnl", Math.round(annualStats.get(ii, 0)));
+            ajo.addProperty("pnl_pct", annualStats.get(ii, 1)*100.0);
+            ajo.addProperty("end_equity", Math.round(annualStats.get(ii, 2)));
+            ajo.addProperty("maxdd", Math.round(annualStats.get(ii, 3)));
+            ajo.addProperty("maxdd_pct", annualStats.get(ii, 4)*100.0);
+            asa.add(ajo);
+            
+            avgPnl.add(annualStats.get(ii, 0));
+            avgPnlPct.add(annualStats.get(ii, 1));
+            avgDD.add(Math.abs(annualStats.get(ii,3)));
+            avgDDPct.add(Math.abs(annualStats.get(ii, 4)));
+         }
+         
+         result.add("annual_stats", asa);
+         
+         result.addProperty("pnl", Math.round(avgPnl.get()));
+         result.addProperty("pnl_pct", avgPnlPct.get()*100.0);
+         result.addProperty("maxdd", Math.round(avgDD.get()));
+         result.addProperty("maxdd_pct", avgDDPct.get()*100.0);
+         result.addProperty("gain_to_pain", avgPnl.get() / avgDD.get());
+      }
+      
+      // Global statistics
+      LocalDateTime maxDateTime = LocalDateTime.MIN;
+      double maxEndEq = Double.MIN_VALUE;
+      
+      Series equity = getEquity();
+      for(int ii = 0; ii < equity.size(); ++ii) {
+         if(equity.get(ii) > maxEndEq) {
+            maxEndEq = equity.get(ii);
+            maxDateTime = equity.getTimestamp(ii);
+         }
+      }
+      
+      double lastDD = maxEndEq - equity.get(equity.size()-1);
+      double lastDDPct = lastDD/maxEndEq*100;
+      
+      JsonObject jo = new JsonObject();
+      jo.addProperty("cash", lastDD);
+      jo.addProperty("pct", lastDDPct);
+      
+      result.add("total_maxdd", jo);
+      
+      jo = new JsonObject();
+      jo.addProperty("date", maxDateTime.format(DateTimeFormatter.ISO_DATE));
+      jo.addProperty("equity", Math.round(maxEndEq));
+      
+      result.add("total_peak", jo);
+      
+      if(equity.size() > 2) {
+         int ii = equity.size() - 1;
+         int jj = ii - 1;
+         
+         for(; jj >= 0 && equity.getTimestamp(jj).getYear() == equity.getTimestamp(ii).getYear(); --jj) {
+            
+         }
+         
+         if(equity.getTimestamp(jj).getYear() != equity.getTimestamp(ii).getYear()) {
+            ++jj;
+            maxDateTime = equity.getTimestamp(jj);
+            maxEndEq = equity.get(jj);
+            for(++jj; jj < equity.size(); ++jj) {
+               if(equity.get(jj) > maxEndEq) {
+                  maxEndEq = equity.get(jj);
+                  maxDateTime = equity.getTimestamp(jj);
+               }
+            }
+            
+            lastDD = maxEndEq - equity.get(equity.size()-1);
+            lastDDPct = lastDD/maxEndEq*100;
+            
+            jo = new JsonObject();
+            jo.addProperty("cash", lastDD);
+            jo.addProperty("pct", lastDDPct);
+            
+            result.add("latest_maxdd", jo);
+            
+            jo = new JsonObject();
+            jo.addProperty("date", maxDateTime.format(DateTimeFormatter.ISO_DATE));
+            jo.addProperty("equity", Math.round(maxEndEq));
+            
+            result.add("latest_peak", jo);
+         }
+      }
+      
+      TradeSummary summary = getSummary("TOTAL", "All");
+      result.addProperty("avg_trade_pnl", Math.round(summary.averageTradePnl));
+      result.addProperty("maxdd", Math.round(summary.maxDrawdown));
+      result.addProperty("num_trades", summary.numTrades);
+      
+      Gson gson = new GsonBuilder()
+                        .setPrettyPrinting()
+                        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                        .create();
+
+      connectIfNecessary();
+      
+      String query = " INSERT INTO strategy_report (strategy_id,last_date,report) " +
+                     " VALUES(?,?,?) ON DUPLICATE KEY UPDATE report=?";
+      PreparedStatement stmt = connection.prepareStatement(query);
+      stmt.setLong(1, dbId);
+      stmt.setTimestamp(2, Timestamp.valueOf(getLastTimestamp()));
+      String jsonString = gson.toJson(result); 
+      stmt.setString(3, jsonString);
+      stmt.setString(4, jsonString);
+      stmt.executeUpdate();
+      
+      connection.commit();
+      
+      return result;
    }
    
    public Order enterLong(String symbol, long quantity, String signal) throws Exception {
