@@ -119,10 +119,10 @@ CREATE TABLE IF NOT EXISTS strategy_positions (
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	strategy_id INTEGER NOT NULL,
 	symbol VARCHAR(10) NOT NULL,
-	ts DATETIME(6) NOT NULL,
+	ts DATETIME(6),
    position DOUBLE NOT NULL,
    last_close DECIMAL(18,8),
-   last_ts DATETIME(6),
+   last_ts DATETIME(6) NOT NULL,
 	details TEXT,
     UNIQUE INDEX strategy_positions_unique (strategy_id, symbol, last_ts))
 ENGINE InnoDB;

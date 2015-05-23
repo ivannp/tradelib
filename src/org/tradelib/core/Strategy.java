@@ -980,7 +980,11 @@ public abstract class Strategy implements IBrokerListener {
          PreparedStatement stmt = con.prepareStatement(query);
          stmt.setLong(1, getStrategyId());
          stmt.setString(2, getSymbol());
-         stmt.setTimestamp(3, Timestamp.valueOf(getDateTime()));
+         if(getDateTime().equals(LocalDateTime.MIN)) {
+            stmt.setNull(3, Types.TIMESTAMP);
+         } else {
+            stmt.setTimestamp(3, Timestamp.valueOf(getDateTime()));
+         }
          stmt.setDouble(4, getPosition());
          stmt.setDouble(5, getLastClose());
          stmt.setTimestamp(6, Timestamp.valueOf(getLastDateTime()));

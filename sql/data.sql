@@ -359,7 +359,7 @@ INSERT INTO instrument_visiable VALUES (106,8,21,84);
 INSERT INTO instrument_visiable VALUES (107,8,33,85);
 INSERT INTO instrument_visiable VALUES (108,8,25,86);
 
-INSERT INTO instrument_visiable VALUES (201,1,125,1);
+INSERT INTO instrument_visiable VALUES (201,1,130,1);
 INSERT INTO instrument_visiable VALUES (202,1,104,2);
 INSERT INTO instrument_visiable VALUES (203,1,137,3);
 INSERT INTO instrument_visiable VALUES (204,1,141,4);
@@ -392,24 +392,25 @@ INSERT INTO instrument_visiable VALUES (226,5,127,51);
 
 INSERT INTO instrument_visiable VALUES (227,6,109,61);
 INSERT INTO instrument_visiable VALUES (228,6,119,62);
-INSERT INTO instrument_visiable VALUES (229,6,139,63);
-INSERT INTO instrument_visiable VALUES (230,6,110,64);
-INSERT INTO instrument_visiable VALUES (231,6,106,65);
-INSERT INTO instrument_visiable VALUES (232,6,101,66);
-INSERT INTO instrument_visiable VALUES (233,6,125,67);
+INSERT INTO instrument_visiable VALUES (229,6,103,63);
+INSERT INTO instrument_visiable VALUES (230,6,139,64);
+INSERT INTO instrument_visiable VALUES (231,6,110,65);
+INSERT INTO instrument_visiable VALUES (232,6,106,66);
+INSERT INTO instrument_visiable VALUES (233,6,101,67);
+INSERT INTO instrument_visiable VALUES (234,6,125,68);
 
-INSERT INTO instrument_visiable VALUES (234,7,145,71);
-INSERT INTO instrument_visiable VALUES (235,7,144,72);
-INSERT INTO instrument_visiable VALUES (236,7,115,73);
-INSERT INTO instrument_visiable VALUES (237,7,143,74);
-INSERT INTO instrument_visiable VALUES (238,7,111,75);
+INSERT INTO instrument_visiable VALUES (235,7,145,71);
+INSERT INTO instrument_visiable VALUES (236,7,144,72);
+INSERT INTO instrument_visiable VALUES (237,7,115,73);
+INSERT INTO instrument_visiable VALUES (238,7,143,74);
+INSERT INTO instrument_visiable VALUES (239,7,111,75);
 
-INSERT INTO instrument_visiable VALUES (239,8,113,81);
-INSERT INTO instrument_visiable VALUES (240,8,129,82);
-INSERT INTO instrument_visiable VALUES (241,8,142,83);
-INSERT INTO instrument_visiable VALUES (242,8,112,84);
-INSERT INTO instrument_visiable VALUES (243,8,149,85);
-INSERT INTO instrument_visiable VALUES (244,8,128,81);
+INSERT INTO instrument_visiable VALUES (240,8,113,81);
+INSERT INTO instrument_visiable VALUES (241,8,129,82);
+INSERT INTO instrument_visiable VALUES (242,8,142,83);
+INSERT INTO instrument_visiable VALUES (243,8,112,84);
+INSERT INTO instrument_visiable VALUES (244,8,149,85);
+INSERT INTO instrument_visiable VALUES (245,8,128,86);
 
 DROP USER 'qboss'@'localhost';
 CREATE USER 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
