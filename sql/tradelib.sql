@@ -3,7 +3,8 @@
 # DROP TABLE IF EXISTS strategies;
 CREATE TABLE IF NOT EXISTS strategies(
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
-	name varchar(20) not null,
+	name VARCHAR(20) not null,
+   details TEXT,
     UNIQUE KEY strategies_unique (name))
 ENGINE InnoDB;
 

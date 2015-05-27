@@ -99,6 +99,23 @@ public class Order {
       this.barsValidFor = -1;
    }
    
+   public Order(Order oo) {
+      this.symbol = oo.symbol;
+      this.quantity = oo.quantity;
+      this.limitPrice = oo.limitPrice;
+      this.stopPrice = oo.stopPrice;
+      this.type = oo.type;
+      
+      this.oca = oo.oca;
+      this.signal = oo.signal;
+      
+      this.barsValidFor = oo.barsValidFor;
+   }
+   
+   public Order clone() {
+      return new Order(this);
+   }
+   
    public String getSymbol() { return symbol; }
    public void setSymbol(String symbol) { this.symbol = symbol; }
    
@@ -188,6 +205,38 @@ public class Order {
          return false;
       }
    }
+   
+   public boolean isLimit() {
+      switch(type) {
+      case ENTER_LONG_LIMIT:
+      case ENTER_LONG_STOP_LIMIT:
+      case EXIT_LONG_LIMIT:
+      case EXIT_LONG_STOP_LIMIT:
+      case ENTER_SHORT_LIMIT:
+      case ENTER_SHORT_STOP_LIMIT:
+      case EXIT_SHORT_LIMIT:
+      case EXIT_SHORT_STOP_LIMIT:
+         return true;
+      default:
+         return false;
+      }
+   }
+   
+   public boolean isStop() {
+      switch(type) {
+      case ENTER_LONG_STOP:
+      case ENTER_LONG_STOP_LIMIT:
+      case EXIT_LONG_STOP:
+      case EXIT_LONG_STOP_LIMIT:
+      case ENTER_SHORT_STOP:
+      case ENTER_SHORT_STOP_LIMIT:
+      case EXIT_SHORT_STOP:
+      case EXIT_SHORT_STOP_LIMIT:
+         return true;
+      default:
+         return false;
+      }
+   }
 
    public boolean isSell() { return !isBuy(); }
 
@@ -211,7 +260,7 @@ public class Order {
          }
       }
    }
-
+   
    /** 
     * @brief Make the order valid for numBars including the bar on which it is submitted.
     *

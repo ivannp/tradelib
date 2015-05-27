@@ -20,4 +20,11 @@ public class InstrumentVariation {
    public double tickCeil(double value) { return Math.ceil(value/getTick())*getTick(); }
    public double tickFloor(double value) { return Math.floor(value/getTick())*getTick(); }
    public double price(double originalPrice) { return originalPrice/factor; }
+   
+   public Order transform(Order oo) {
+      Order result = oo.clone();
+      if(result.isLimit()) result.setLimit(price(result.getLimit()));
+      if(result.isStop()) result.setStop(price(result.getStop()));
+      return result;
+   }
 }

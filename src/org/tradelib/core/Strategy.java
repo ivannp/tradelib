@@ -908,6 +908,9 @@ public abstract class Strategy implements IBrokerListener {
       public String getSymbol() { return symbol; }
       public void setSymbol(String symbol) { this.symbol = symbol; }
       
+      public String getTradingSymbol() { return tradingSymbol; }
+      public void setTradingSymbol(String symbol) { this.tradingSymbol = symbol; }
+      
       public LocalDateTime getDateTime() { return ts; }
       public void setDateTime(LocalDateTime ts) { this.ts = ts; }
       
@@ -919,6 +922,9 @@ public abstract class Strategy implements IBrokerListener {
       
       public double getLastClose() { return lastClose; }
       public void setLastClose(double lastClose) { this.lastClose = lastClose; }
+      
+      public double getLastTradingClose() { return lastTradingClose; }
+      public void setLastTradingClose(double lastClose) { this.lastTradingClose = lastClose; }
       
       public LocalDateTime getLastDateTime() { return lastDateTime; }
       public void setLastDateTime(LocalDateTime ldt) { this.lastDateTime = ldt; }
@@ -958,9 +964,12 @@ public abstract class Strategy implements IBrokerListener {
          if(!Double.isNaN(getPnl())) {
             jo.addProperty("pnl", getPnl());
          }
-         jo.addProperty("last_close", getLastClose());
+         jo.addProperty("last_close", getLastTradingClose());
          if(!Double.isNaN(getEntryPrice())) {
             jo.addProperty("entry_price", getEntryPrice());
+         }
+         if(!tradingSymbol.isEmpty()) {
+            jo.addProperty("trading_symbol", getTradingSymbol());
          }
          numericProperties.forEach((k, v) -> jo.addProperty(k, v));
          JsonArray ordersArray = new JsonArray();
@@ -1002,11 +1011,13 @@ public abstract class Strategy implements IBrokerListener {
       private long id;
       private long strategyId;
       private String symbol;
+      private String tradingSymbol;
       private LocalDateTime ts = null;
       private double position;
       private LocalDateTime since = null;
       private double pnl;
       private double lastClose;
+      private double lastTradingClose;
       private LocalDateTime lastDateTime = null;
       private double entryPrice;
       private double entryRisk;

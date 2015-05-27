@@ -185,13 +185,13 @@ INSERT INTO instrument_variation VALUES(110,'ib','DX','csi','DX2',1.0,0.005);
 INSERT INTO instrument_variation VALUES(111,'ib','GF','csi','FC',1.0,0.025);
 INSERT INTO instrument_variation VALUES(112,'ib','ZF','csi','FV',1.0,0.0078125);
 INSERT INTO instrument_variation VALUES(113,'ib','GC','csi','GC2',1.0,0.1);
+INSERT INTO instrument_variation VALUES(120,'ib','HE','csi','LH',1.0,0.025);
 INSERT INTO instrument_variation VALUES(114,'ib','HG','csi','HG2',100.0,0.0005);
 INSERT INTO instrument_variation VALUES(115,'ib','HO','csi','HO2',1.0,0.0001);
 INSERT INTO instrument_variation VALUES(116,'ib','JPY','csi','JY',100.0,0.000001);
 INSERT INTO instrument_variation VALUES(117,'ib','KC','csi','KC2',100.0,0.0005);
 INSERT INTO instrument_variation VALUES(118,'ib','KE','csi','KW2',1.0,0.25);
 INSERT INTO instrument_variation VALUES(119,'ib','LE','csi','LC',1.0,0.025);
-INSERT INTO instrument_variation VALUES(120,'ib','GF','csi','LH',1.0,0.025);
 INSERT INTO instrument_variation VALUES(121,'ib','MXP','csi','MP',1.0,0.00001);
 INSERT INTO instrument_variation VALUES(122,'ib','NDX','csi','NDX',1.0,0.25);
 INSERT INTO instrument_variation VALUES(123,'ib','NG','csi','NG2',1.0,0.001);
@@ -412,6 +412,60 @@ INSERT INTO instrument_visiable VALUES (243,8,112,84);
 INSERT INTO instrument_visiable VALUES (244,8,149,85);
 INSERT INTO instrument_visiable VALUES (245,8,128,86);
 
+DROP TABLE IF EXISTS instrument_exchange;
+CREATE TABLE instrument_exchange (
+  id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+  symbol VARCHAR(16) NOT NULL,
+  exchange VARCHAR(32) NOT NULL,
+  UNIQUE INDEX ie_unique(symbol))
+ENGINE=InnoDB;
+
+INSERT INTO instrument_exchange VALUES (1,'ZO','ECBOT');
+INSERT INTO instrument_exchange VALUES (2,'ZC','ECBOT');
+INSERT INTO instrument_exchange VALUES (3,'ZS','ECBOT');
+INSERT INTO instrument_exchange VALUES (4,'ZM','ECBOT');
+INSERT INTO instrument_exchange VALUES (5,'ZL','ECBOT');
+INSERT INTO instrument_exchange VALUES (6,'ZW','ECBOT');
+INSERT INTO instrument_exchange VALUES (7,'KE','ECBOT');
+INSERT INTO instrument_exchange VALUES (8,'ZR','ECBOT');
+
+INSERT INTO instrument_exchange VALUES (9,'HE','GLOBEX');
+INSERT INTO instrument_exchange VALUES (10,'LE','GLOBEX');
+INSERT INTO instrument_exchange VALUES (11,'GF','GLOBEX');
+
+INSERT INTO instrument_exchange VALUES (22,'HG','NYMEX');
+INSERT INTO instrument_exchange VALUES (23,'SI','NYMEX');
+INSERT INTO instrument_exchange VALUES (24,'GC','NYMEX');
+INSERT INTO instrument_exchange VALUES (25,'PA','NYMEX');
+INSERT INTO instrument_exchange VALUES (26,'PL','NYMEX');
+
+INSERT INTO instrument_exchange VALUES (30,'CL','NYMEX');
+INSERT INTO instrument_exchange VALUES (31,'HO','NYMEX');
+INSERT INTO instrument_exchange VALUES (32,'RB','NYMEX');
+INSERT INTO instrument_exchange VALUES (33,'NG','NYMEX');
+
+INSERT INTO instrument_exchange VALUES (80,'EUR','GLOBEX');
+INSERT INTO instrument_exchange VALUES (81,'JPY','GLOBEX');
+INSERT INTO instrument_exchange VALUES (82,'CHF','GLOBEX');
+INSERT INTO instrument_exchange VALUES (83,'GBP','GLOBEX');
+INSERT INTO instrument_exchange VALUES (84,'DX','NYBOT');
+INSERT INTO instrument_exchange VALUES (85,'CAD','GLOBEX');
+INSERT INTO instrument_exchange VALUES (86,'AUD','GLOBEX');
+INSERT INTO instrument_exchange VALUES (87,'MXP','GLOBEX');
+
+INSERT INTO instrument_exchange VALUES (91,'ZB','ECBOT');
+INSERT INTO instrument_exchange VALUES (92,'ZN','ECBOT');
+INSERT INTO instrument_exchange VALUES (93,'ZF','ECBOT');
+INSERT INTO instrument_exchange VALUES (94,'ZT','ECBOT');
+INSERT INTO instrument_exchange VALUES (95,'GE','GLOBEX');
+
+INSERT INTO instrument_exchange VALUES (101,'ES','GLOBEX');
+INSERT INTO instrument_exchange VALUES (102,'NQ','GLOBEX');
+INSERT INTO instrument_exchange VALUES (103,'TF','NYBOT');
+INSERT INTO instrument_exchange VALUES (104,'EMD','GLOBEX');
+INSERT INTO instrument_exchange VALUES (105,'YM','ECBOT');
+INSERT INTO instrument_exchange VALUES (106,'NKD','GLOBEX');
+
 DROP USER 'qboss'@'localhost';
 CREATE USER 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.holidays TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
@@ -424,3 +478,4 @@ GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.csi_bars TO 'qboss'@'localhost'
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.kv TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.categories TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.instrument_visiable TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.instrument_exchange TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';

@@ -153,7 +153,7 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       
       Connection con = DriverManager.getConnection(config.getProperty("db.url"));
       String table = config.getProperty("instruments.variations.table");
-      String originalProvider = config.getProperty("provider");
+      String originalProvider = config.getProperty("instrument.provider");
       
       if(table == null) {
          return null;
