@@ -968,7 +968,7 @@ public abstract class Strategy implements IBrokerListener {
          if(!Double.isNaN(getEntryPrice())) {
             jo.addProperty("entry_price", getEntryPrice());
          }
-         if(!tradingSymbol.isEmpty()) {
+         if(tradingSymbol != null && !tradingSymbol.isEmpty()) {
             jo.addProperty("trading_symbol", getTradingSymbol());
          }
          numericProperties.forEach((k, v) -> jo.addProperty(k, v));
@@ -991,8 +991,10 @@ public abstract class Strategy implements IBrokerListener {
          stmt.setString(2, getSymbol());
          if(getDateTime().equals(LocalDateTime.MIN)) {
             stmt.setNull(3, Types.TIMESTAMP);
+            stmt.setNull(10, Types.TIMESTAMP);
          } else {
             stmt.setTimestamp(3, Timestamp.valueOf(getDateTime()));
+            stmt.setTimestamp(10, Timestamp.valueOf(getDateTime()));
          }
          stmt.setDouble(4, getPosition());
          stmt.setDouble(5, getLastClose());
@@ -1000,7 +1002,6 @@ public abstract class Strategy implements IBrokerListener {
          stmt.setString(7, jsonString);
          stmt.setDouble(8, getPosition());
          stmt.setDouble(9, getLastClose());
-         stmt.setTimestamp(10, Timestamp.valueOf(getDateTime()));
          stmt.setString(11, jsonString);
          
          stmt.executeUpdate();
