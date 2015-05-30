@@ -1,22 +1,23 @@
 package org.tradelib.core;
 
+import java.io.BufferedReader;
 import java.io.FileReader;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 
-import com.opencsv.CSVReader;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 
 public class Series {
    private List<LocalDateTime> index;
@@ -34,42 +35,51 @@ public class Series {
    }
    
    static public Series fromCsv(String path, boolean header, DateTimeFormatter dtf, LocalTime lt) throws Exception {
-      CSVReader csv = new CSVReader(new FileReader(path));
-      String [] line = csv.readNext();
-      if(line == null) return null;
-      
-      int ncols = line.length - 1;
-      
-      Series result = new Series(ncols);
-      
-      if(header) {
-         result.setNames(Arrays.copyOfRange(line, 1, line.length));
-         line = csv.readNext();
-         if(line == null) {
-            // Only a header
-            return result;
-         }
-      }
       
       if(dtf == null) {
          if(lt == null) dtf = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
          else dtf = DateTimeFormatter.ISO_DATE;
       }
       
-      double [] values = new double[ncols];
-      for(; line != null; line = csv.readNext()) {
+      // Parse and import the csv
+      CSVFormat csvFmt = CSVFormat
+                              .DEFAULT
+                              .withCommentMarker('#')
+                              .withIgnoreSurroundingSpaces();
+      if(header) csvFmt = csvFmt.withHeader();
+      CSVParser csv = csvFmt.parse(new BufferedReader(new FileReader(path)));
+      
+      int ncols = -1;
+      Series result = null;
+      double [] values = null;
+
+      for(CSVRecord rec : csv.getRecords()) {
+         if(result == null) {
+            ncols = rec.size() - 1;
+            values = new double[ncols];
+            result = new Series(ncols);
+         }
+         
          for(int ii = 0; ii < ncols; ++ii) {
-            values[ii] = Double.parseDouble(line[ii + 1]);
+            values[ii] = Double.parseDouble(rec.get(ii + 1));
          }
 
          LocalDateTime ldt;
          if(lt != null) {
-            ldt = LocalDate.parse(line[0], dtf).atTime(lt);
+            ldt = LocalDate.parse(rec.get(0), dtf).atTime(lt);
          } else {
-            ldt = LocalDateTime.parse(line[0], dtf);
+            ldt = LocalDateTime.parse(rec.get(0), dtf);
          }
          
          result.append(ldt, values);
+      }
+      
+      if(header) {
+         Map<String,Integer> headerMap = csv.getHeaderMap();
+         result.clearNames();
+         for(Map.Entry<String,Integer> me : headerMap.entrySet()) {
+            if(me.getValue() > 0) result.setName(me.getKey(), me.getValue() - 1);
+         }
       }
       
       return result;
@@ -136,6 +146,19 @@ public class Series {
       for(int ii = 0; ii < names.length; ++ii) {
          columnNames.put(names[ii], ii);
       }
+   }
+   
+   public void setNames(Map<String,Integer> map) {
+      columnNames.clear();
+      columnNames.putAll(map);
+   }
+   
+   public void setName(String name, int id) {
+      columnNames.put(name, id);
+   }
+   
+   public void clearNames() {
+      columnNames.clear();
    }
    
    public int size() {

@@ -1109,8 +1109,8 @@ public abstract class Strategy implements IBrokerListener {
          
          result.addProperty("pnl", Math.round(avgPnl.get()));
          result.addProperty("pnl_pct", avgPnlPct.get()*100.0);
-         result.addProperty("maxdd", Math.round(avgDD.get()));
-         result.addProperty("maxdd_pct", avgDDPct.get()*100.0);
+         result.addProperty("avgdd", Math.round(avgDD.get()));
+         result.addProperty("avgdd_pct", avgDDPct.get()*100.0);
          result.addProperty("gain_to_pain", avgPnl.get() / avgDD.get());
       }
       

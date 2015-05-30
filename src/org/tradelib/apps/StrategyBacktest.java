@@ -98,8 +98,8 @@ public class StrategyBacktest {
          
          String pnlStr = String.format("$%,d", report.get("pnl").getAsInt());
          String pnlPctStr = String.format("%.2f%%", report.get("pnl_pct").getAsDouble());
-         String ddStr = String.format("$%,d", report.get("maxdd").getAsInt());
-         String ddPctStr = String.format("%.2f%%", report.get("maxdd_pct").getAsDouble());
+         String ddStr = String.format("$%,d", report.get("avgdd").getAsInt());
+         String ddPctStr = String.format("%.2f%%", report.get("avgdd_pct").getAsDouble());
          String gainToPainStr = String.format("%.4f", report.get("gain_to_pain").getAsDouble());
          System.out.println("\nAvg PnL: " + pnlStr + ", Pct Avg PnL: " + pnlPctStr + 
                ", Avg DD: " + ddStr + ", Pct Avg DD: " + ddPctStr + 

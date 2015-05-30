@@ -1,0 +1,36 @@
+// apply plugin: 'application'
+apply plugin: 'eclipse'
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+   compile 'com.google.code.gson:gson:2.3.1'
+   compile 'com.google.guava:guava:18.0'
+   compile 'mysql:mysql-connector-java:5.1.35'
+   compile 'commons-io:commons-io:2.4'
+   compile 'org.apache.commons:commons-csv:1.1'
+   compile 'com.opencsv:opencsv:3.3'
+}
+
+task copyToLib( type: Copy ) {
+    into "$buildDir/libs/lib"
+    from configurations.runtime
+}
+
+jar {
+    baseName = 'tradelib'
+    version =  '1.0.0'
+    
+    dependsOn copyToLib
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ["src"]
+        }
+    }
+}
