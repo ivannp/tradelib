@@ -63,9 +63,9 @@ public class PortfolioTest {
       portfolio.addTransaction(esInstrument, LocalDateTime.of(2014, 2, 14, 17, 0, 0), 1, 1828.00, contractFees*1.0);
       
       TimeSeries<Double> pnl = portfolio.getPnlOld(esInstrument, es.subset("2013-12-31", "2014-02-18").columns("close"));
-      for(int ii = 0; ii < pnl.size(); ++ii) {
-         System.out.println(pnl.getTimestamp(ii).format(DateTimeFormatter.ISO_DATE_TIME) + " " + String.valueOf(pnl.get(ii)));
-      }
+//      for(int ii = 0; ii < pnl.size(); ++ii) {
+//         System.out.println(pnl.getTimestamp(ii).format(DateTimeFormatter.ISO_DATE_TIME) + " " + String.valueOf(pnl.get(ii)));
+//      }
       
       assertEquals(pnl.get("2014-01-02T17:00:00"), contractFees, 1e-8);
       assertEquals(pnl.get("2014-01-03T17:00:00"), -50.0, 1e-8);

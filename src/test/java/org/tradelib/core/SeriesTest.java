@@ -69,6 +69,6 @@ public class SeriesTest {
       assertEquals(1846.61, tt.get(LocalDateTime.of(2014, 1, 7, 0, 0), 0), 1e-8);
       assertEquals(985.48, tt.get(LocalDateTime.of(2014, 1, 27, 0, 0), 0), 1e-8);
       assertEquals(0.0, tt.get(LocalDateTime.of(2014, 2, 18, 0, 0), 0), 1e-8);
-      tt.head(10).print("yyyy-MM-dd");
+      // tt.head(10).print("yyyy-MM-dd");
    }
 }

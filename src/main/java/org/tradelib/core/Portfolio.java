@@ -137,7 +137,10 @@ public class Portfolio {
       
       ArrayList<Transaction> instrumentTransactions = id.transactions;
       
-      assert ldt.isAfter(instrumentTransactions.get(instrumentTransactions.size()-1).ts) : "Transactions must be added in chronological order!";
+      assert ldt.isAfter(instrumentTransactions.get(instrumentTransactions.size()-1).ts) :
+             "Transactions must be added in chronological order [" +
+             ldt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:mm nnn")) + " " +
+             instrumentTransactions.get(instrumentTransactions.size()-1).ts.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:mm nnn")) + "]";
       
       Transaction transaction = new Transaction(ldt, q, p, f);
       long ppq = instrumentTransactions.get(instrumentTransactions.size()-1).positionQuantity;
@@ -187,7 +190,12 @@ public class Portfolio {
       
 //      logger_.info("Portfolio: adding transaction at " + transaction.ts.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) +
 //            ", previous transaction at " + transactions.get(transactions.size()-1).ts.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-      assert ldt.isAfter(instrumentTransactions.get(instrumentTransactions.size()-1).ts) : "Transactions must be added in chronological order!";
+      
+      assert transaction.ts.isAfter(instrumentTransactions.get(instrumentTransactions.size()-1).ts) :
+         "Transactions must be added in chronological order [" +
+         transaction.ts.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:mm nnn")) + " " +
+         instrumentTransactions.get(instrumentTransactions.size()-1).ts.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:mm nnn")) + "]";
+      
       instrumentTransactions.add(transaction);
    }
    
