@@ -4,6 +4,8 @@ import static org.junit.Assert.*;
 
 import java.io.FileReader;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -43,7 +45,9 @@ public class AccountTest {
    public void testAccount() throws Exception {
       Instrument esInstrument = Instrument.makeFuture("ES", new BigDecimal("0.25"), new BigDecimal("50"));
       
-      TimeSeries<Double> es = fromCsv("test/data/es.csv", false);
+      TimeSeries<Double> es = fromCsv(
+                                 Paths.get(getClass().getResource("/data/es.csv").toURI()).toString(),
+                                 false);
       
       Account account = new Account();
       assertEquals(0.0, account.getEndEquity(), 1e-8);
@@ -120,9 +124,15 @@ public class AccountTest {
       Instrument ojInstrument = Instrument.makeFuture("OJ", new BigDecimal("0.05"), new BigDecimal("150"));
       Instrument audInstrument = Instrument.makeFuture("AUD", new BigDecimal("0.01"), new BigDecimal("1000"));
       
-      TimeSeries<Double> es = fromCsv("test/data/es.csv", false);
-      TimeSeries<Double> oj = fromCsv("test/data/oj.csv", false);
-      TimeSeries<Double> aud = fromCsv("test/data/aud.csv", false);
+      TimeSeries<Double> es = fromCsv(
+            Paths.get(getClass().getResource("/data/es.csv").toURI()).toString(),
+            false);
+      TimeSeries<Double> oj = fromCsv(
+            Paths.get(getClass().getResource("/data/oj.csv").toURI()).toString(),
+            false);
+      TimeSeries<Double> aud = fromCsv(
+            Paths.get(getClass().getResource("/data/aud.csv").toURI()).toString(),
+            false);
       
       Account account = new Account(LocalDateTime.of(2013, 12, 26, 0, 0, 0), initialEquity);
       
@@ -471,7 +481,10 @@ public class AccountTest {
       
       // Load the expected account values
       DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-      Series eas = Series.fromCsv("test/data/account.summary.csv", true, dtf);
+      Series eas = Series.fromCsv(
+            Paths.get(getClass().getResource("/data/account.summary.csv").toURI()).toString(),
+            true,
+            dtf);
       // If we have repetitive days - these are fractions
       for(int ii = 1; ii < eas.size(); ++ii) {
          if(eas.getTimestamp(ii).equals(eas.getTimestamp(ii-1))) {
@@ -497,7 +510,10 @@ public class AccountTest {
          assertEquals(eas.get(ldt, "End.Eq"), as.get(ii, "end.equity"), 1e-8);
       }
       
-      Series eps = Series.fromCsv("test/data/portfolio.summary.csv", true, dtf);
+      Series eps = Series.fromCsv(
+            Paths.get(getClass().getResource("/data/portfolio.summary.csv").toURI()).toString(),
+            true,
+            dtf);
       // If we have repetitive days - these are fractions
       for(int ii = 1; ii < eps.size(); ++ii) {
          if(eps.getTimestamp(ii).equals(eps.getTimestamp(ii-1))) {
@@ -521,7 +537,10 @@ public class AccountTest {
          assertEquals(eps.get(ldt, "Net.Trading.PL"), ps.get(ii, "net.pnl"), 1e-8);
       }
       
-      Series expected = Series.fromCsv("test/data/portfolio.oj.csv", true, dtf);
+      Series expected = Series.fromCsv(
+            Paths.get(getClass().getResource("/data/portfolio.oj.csv").toURI()).toString(),
+            true,
+            dtf);
       // If we have repetitive days - these are fractions
       for(int ii = 1; ii < expected.size(); ++ii) {
          if(expected.getTimestamp(ii).equals(expected.getTimestamp(ii-1))) {

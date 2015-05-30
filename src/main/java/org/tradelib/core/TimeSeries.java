@@ -15,8 +15,6 @@ import java.util.List;
 
 import org.xml.sax.HandlerBase;
 
-import com.opencsv.CSVReader;
-
 public class TimeSeries<T> {
    private ArrayList<LocalDateTime> index;
    private ArrayList<ArrayList<T>> data;

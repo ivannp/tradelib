@@ -2,6 +2,7 @@ package org.tradelib.core;
 
 import static org.junit.Assert.*;
 
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -12,7 +13,11 @@ public class SeriesTest {
 
    @Test
    public void testFromCsv() throws Exception {
-      Series ss = Series.fromCsv("test/data/es.csv", false, DateTimeFormatter.BASIC_ISO_DATE, LocalTime.of(17, 0));
+      
+      Series ss = Series.fromCsv(
+                     Paths.get(getClass().getResource("/data/es.csv").toURI()).toString(),
+                     false,
+                     DateTimeFormatter.BASIC_ISO_DATE, LocalTime.of(17, 0));
       ss.setNames("open", "high", "low", "close", "volume", "interest");
       
       assertEquals(1829.5, ss.get(LocalDateTime.of(2013, 12, 26, 17, 0), 3), 1e-8);
@@ -27,7 +32,10 @@ public class SeriesTest {
    
    @Test
    public void testHeadTail() throws Exception {
-      Series ss = Series.fromCsv("test/data/oj.csv", false, DateTimeFormatter.BASIC_ISO_DATE, LocalTime.of(17, 0));
+      Series ss = Series.fromCsv(
+                     Paths.get(getClass().getResource("/data/oj.csv").toURI()).toString(),
+                     false,
+                     DateTimeFormatter.BASIC_ISO_DATE, LocalTime.of(17, 0));
       ss.setNames("open", "high", "low", "close", "volume", "interest");
       
       Series tt = ss.head(7);
@@ -49,7 +57,10 @@ public class SeriesTest {
    
    @Test
    public void testToDaily() throws Exception {
-      Series ss = Series.fromCsv("test/data/pnl.csv", true, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+      Series ss = Series.fromCsv(
+                     Paths.get(getClass().getResource("/data/pnl.csv").toURI()).toString(),
+                     true,
+                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
       assertEquals(51, ss.size());
       // Accumulate using sum
       Series tt = ss.toDaily((Double x, Double y) -> x + y);

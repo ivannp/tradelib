@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import java.io.FileReader;
 import java.math.BigDecimal;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -46,7 +47,9 @@ public class PortfolioTest {
       Portfolio portfolio = new Portfolio();
       portfolio.addInstrument(esInstrument);
 
-      TimeSeries<Double> es = fromCsv("test/data/es.csv", false);
+      TimeSeries<Double> es = fromCsv(
+            Paths.get(getClass().getResource("/data/es.csv").toURI()).toString(),
+            false);
       
       double contractFees = -1.13;
 
@@ -102,7 +105,9 @@ public class PortfolioTest {
       Portfolio portfolio = new Portfolio();
       portfolio.addInstrument(esInstrument);
 
-      TimeSeries<Double> es = fromCsv("test/data/es.csv", false);
+      TimeSeries<Double> es = fromCsv(
+            Paths.get(getClass().getResource("/data/es.csv").toURI()).toString(),
+            false);
       
       double contractFees = -1.13;
 

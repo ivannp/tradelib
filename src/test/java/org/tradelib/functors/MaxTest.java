@@ -1,7 +1,6 @@
 package org.tradelib.functors;
 
 import static org.junit.Assert.*;
-
 import org.junit.Test;
 
 public class MaxTest {
