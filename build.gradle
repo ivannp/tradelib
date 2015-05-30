@@ -12,7 +12,6 @@ dependencies {
    compile 'mysql:mysql-connector-java:5.1.35'
    compile 'commons-io:commons-io:2.4'
    compile 'org.apache.commons:commons-csv:1.1'
-   compile 'com.opencsv:opencsv:3.3'
 }
 
 task copyToLib( type: Copy ) {
