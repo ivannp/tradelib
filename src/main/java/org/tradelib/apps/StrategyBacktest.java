@@ -5,8 +5,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
@@ -35,13 +37,26 @@ public class StrategyBacktest {
 
    public static void run(Strategy strategy) throws Exception {
       // Setup the logging
-      Logger rootLogger = Logger.getLogger(""); 
-      FileHandler logHandler = new FileHandler(BacktestCfg.instance().getProperty("diag.out", "diag.out"), true); 
-      logHandler.setFormatter(new SimpleFormatter()); 
-      logHandler.setLevel(Level.INFO); 
-      // rootLogger.removeHandler(rootLogger.getHandlers()[0]); 
-      rootLogger.setLevel(Level.WARNING); 
-      rootLogger.addHandler(logHandler);
+      System.setProperty(
+               "java.util.logging.SimpleFormatter.format",
+               "%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS: %4$s: %5$s%n%6$s%n");
+      LogManager.getLogManager().reset();
+      Logger rootLogger = Logger.getLogger("");
+      if(Boolean.parseBoolean(BacktestCfg.instance().getProperty("file.log", "true"))) {
+         FileHandler logHandler = new FileHandler("diag.out", 8*1024*1024, 2, true);
+         logHandler.setFormatter(new SimpleFormatter()); 
+         logHandler.setLevel(Level.FINEST); 
+         rootLogger.addHandler(logHandler);
+      }
+      
+      if(Boolean.parseBoolean(BacktestCfg.instance().getProperty("console.log", "true"))) {
+         ConsoleHandler consoleHandler = new ConsoleHandler();
+         consoleHandler.setFormatter(new SimpleFormatter());
+         consoleHandler.setLevel(Level.INFO);
+         rootLogger.addHandler(consoleHandler);
+      }
+       
+      rootLogger.setLevel(Level.INFO); 
       
       // Setup Hibernate
       // Configuration configuration = new Configuration();

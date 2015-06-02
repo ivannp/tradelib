@@ -1293,6 +1293,12 @@ public abstract class Strategy implements IBrokerListener {
       broker.submitOrder(order);
       return order;
    }
+   
+   public Order exitShort(String symbol, String signal) throws Exception {
+      Order order = Order.exitShort(symbol, Order.POSITION_QUANTITY, signal);
+      broker.submitOrder(order);
+      return order;
+   }
 
    public Order exitShort(String symbol, long quantity) throws Exception {
       Order order = Order.exitShort(symbol, quantity);
@@ -1308,6 +1314,12 @@ public abstract class Strategy implements IBrokerListener {
    
    public Order exitLong(String symbol) throws Exception {
       Order order = Order.exitLong(symbol, Order.POSITION_QUANTITY);
+      broker.submitOrder(order);
+      return order;
+   }
+   
+   public Order exitLong(String symbol, String signal) throws Exception {
+      Order order = Order.exitLong(symbol, Order.POSITION_QUANTITY, signal);
       broker.submitOrder(order);
       return order;
    }

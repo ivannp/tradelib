@@ -132,7 +132,7 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       String table = config.getProperty("instruments.table");
       String provider = config.getProperty("instrument.provider");
       
-      String query = "SELECT tick,bpv,comment,exchange " +
+      String query = "SELECT type,tick,bpv,comment,exchange " +
                      "FROM " + table + " " +
                      "WHERE symbol=? AND provider=?";
       PreparedStatement stmt = con.prepareStatement(query);
@@ -141,8 +141,13 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       ResultSet rs = stmt.executeQuery();
       
       if(rs.next()) {
-         // System.out.println(rs.getBigDecimal(1).toString() + " " + rs.getBigDecimal(2).toString() + " " + rs.getString(3));
-         return Instrument.makeFuture(symbol, rs.getBigDecimal(1), rs.getBigDecimal(2), rs.getString(3));
+         String type = rs.getString(1);
+         switch(type) {
+         case "FUT":
+            return Instrument.makeFuture(symbol, rs.getBigDecimal(2), rs.getBigDecimal(3), rs.getString(4));
+         case "FX":
+            return Instrument.makeForex(symbol, rs.getBigDecimal(2));
+         }
       }
       
       return null;

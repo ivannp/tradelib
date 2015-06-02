@@ -93,6 +93,7 @@ public class Instrument {
    public boolean isFuture() { return getType() == Type.FUTURE; }
    public boolean isStock() { return getType() == Type.STOCK; }
    public boolean isIndex() { return getType() == Type.INDEX; }
+   public boolean isForex() { return getType() == Type.FOREX; }
    
    public double tickCeil(double value) { return Math.ceil(value/getTick())*getTick(); }
    public double tickFloor(double value) { return Math.floor(value/getTick())*getTick(); }
