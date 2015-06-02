@@ -295,5 +295,12 @@ public class Series {
    public int columns() {
       return data.size();
    }
+   
+   public boolean isOrdered() {
+      for(int ii = 1; ii < index.size(); ++ii) {
+         if(index.get(ii).isBefore(index.get(ii-1))) return false;
+      }
+      return true;
+   }
 }
  

@@ -5,7 +5,7 @@ import java.util.Objects;
 
 public class Instrument {
    public enum Type {
-      NONE, FUTURE, INDEX, STOCK
+      NONE, FUTURE, INDEX, STOCK, FOREX
    }
 
    private final Type type;
@@ -68,6 +68,14 @@ public class Instrument {
    
    public static Instrument makeIndex(String symbol) {
       return new Instrument(Type.INDEX, symbol, BigDecimal.valueOf(0.01), BigDecimal.valueOf(1.0), "");
+   }
+   
+   public static Instrument makeForex(String symbol) {
+      return new Instrument(Type.FOREX, symbol, BigDecimal.valueOf(0.0001), BigDecimal.valueOf(1.0), "");
+   }
+   
+   public static Instrument makeForex(String symbol, BigDecimal tick) {
+      return new Instrument(Type.FOREX, symbol, tick, BigDecimal.valueOf(1.0), "");
    }
    
    public double getTick() { return tick.doubleValue(); }

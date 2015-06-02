@@ -62,6 +62,7 @@ public abstract class Strategy implements IBrokerListener {
    }
    
    protected void setName(String name) { this.name = name; }
+   public String getName() { return this.name; }
    
    protected void setDbUrl(String dbUrl) { this.dbUrl = dbUrl; }
    

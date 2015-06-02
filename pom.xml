@@ -2,10 +2,10 @@
    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
    <modelVersion>4.0.0</modelVersion>
    <groupId>org.tradelib</groupId>
-   <artifactId>Tradelib</artifactId>
+   <artifactId>tradelib</artifactId>
    <packaging>jar</packaging>
-   <version>1.0-SNAPSHOT</version>
-   <name>tradelib</name>
+   <version>1.0</version>
+   <name>Tradelib</name>
    <url>http://maven.apache.org</url>
 
    <properties>
@@ -16,6 +16,7 @@
       <mysql.version>5.1.35</mysql.version>
       <commons.csv.version>1.1</commons.csv.version>
       <open.csv.version>3.3</open.csv.version>
+      <javax.mail.version>1.5.3</javax.mail.version>
    </properties>
 
    <dependencies>
@@ -49,6 +50,12 @@
          <groupId>com.opencsv</groupId>
          <artifactId>opencsv</artifactId>
          <version>${open.csv.version}</version>
+      </dependency>
+      
+      <dependency>
+         <groupId>com.sun.mail</groupId>
+         <artifactId>javax.mail</artifactId>
+         <version>${javax.mail.version}</version>
       </dependency>
    </dependencies>
 
