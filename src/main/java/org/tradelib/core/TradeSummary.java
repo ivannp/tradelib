@@ -29,7 +29,8 @@ public class TradeSummary {
 
    public double equityMin;
    public double equityMax;
-   public double maxDrawdown;
+   public double maxDD;
+   public double maxDDPct;
    
    public TradeSummary() {
       numTrades = Long.MIN_VALUE;
@@ -56,6 +57,7 @@ public class TradeSummary {
 
       equityMin = Double.NaN;
       equityMax = Double.NaN;
-      maxDrawdown = Double.NaN;
+      maxDD = Double.NaN;
+      maxDDPct = Double.NaN;
    }
 }

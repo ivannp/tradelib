@@ -1,5 +1,8 @@
 package org.tradelib.core;
 
+import java.math.BigDecimal;
+import java.util.logging.Logger;
+
 public class TradeSummaryBuilder {
    private long numTrades;
 
@@ -25,7 +28,8 @@ public class TradeSummaryBuilder {
    private double equity;
    private double minEquity;
    private double maxEquity;
-   private double maxDrawdown;
+   private double maxDD;
+   private double maxDDPct;
    
    public TradeSummaryBuilder(Series pnl) {
       numTrades = 0;
@@ -51,7 +55,8 @@ public class TradeSummaryBuilder {
       equity = 0.0;
       minEquity = Double.MAX_VALUE;
       maxEquity = Double.MIN_VALUE;
-      maxDrawdown = Double.MAX_VALUE;
+      maxDD = Double.MAX_VALUE;
+      maxDDPct = Double.MAX_VALUE;
    }
    
    public void add(Trade ts) {
@@ -84,7 +89,12 @@ public class TradeSummaryBuilder {
          equity += pnl.get(pnlId); 
          maxEquity = Math.max(maxEquity, equity);
          minEquity = Math.min(minEquity, equity);
-         maxDrawdown = Math.min(maxDrawdown, equity - maxEquity);
+         maxDD = Math.min(maxDD, equity - maxEquity);
+         double prev = maxDDPct;
+         maxDDPct = Math.min(maxDDPct, equity/maxEquity-1);
+         if(Double.isNaN(maxDDPct) || !Double.isFinite(maxDDPct)) {
+            maxDDPct = Double.MAX_VALUE;
+         }
 
          if(pnl.get(pnlId) != 0.0) {
             dailyPnlStats.add(pnl.get(pnlId));
@@ -131,7 +141,12 @@ public class TradeSummaryBuilder {
 
          summary.equityMin = minEquity;
          summary.equityMax = maxEquity;
-         summary.maxDrawdown = maxDrawdown;
+         summary.maxDD = maxDD;
+         summary.maxDDPct = maxDDPct*100;
+         if(Double.isNaN(summary.maxDDPct) || !Double.isFinite(summary.maxDDPct)) {
+            Logger.getLogger("").warning(String.format("Fixing a bad maximum drawdown [%f]", summary.maxDDPct));
+            summary.maxDDPct = Double.MAX_VALUE;
+         }
 
          summary.averageDailyPnl = dailyPnlStats.getAverage();
          summary.dailyPnlStdDev = dailyPnlStats.getStdDev();

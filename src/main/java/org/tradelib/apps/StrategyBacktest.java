@@ -123,7 +123,7 @@ public class StrategyBacktest {
             String pnlPctStr = String.format("%.2f%%", jo.get("pnl_pct").getAsDouble());
             String endEqStr = String.format("$%,d", jo.get("end_equity").getAsInt());
             String ddStr = String.format("$%,d", jo.get("maxdd").getAsInt());
-            String ddPctStr = String.format("%.2f%%", jo.get("pnl_pct").getAsDouble());
+            String ddPctStr = String.format("%.2f%%", jo.get("maxdd_pct").getAsDouble());
             String str = yearStr + " PnL: " + pnlStr + ", PnL Pct: " + pnlPctStr +
                   ", End Equity: " + endEqStr + ", MaxDD: " + ddStr +
                   ", Pct MaxDD: " + ddPctStr;
@@ -161,7 +161,7 @@ public class StrategyBacktest {
          jo = report.getAsJsonObject("latest_peak");
          LocalDate ld = LocalDate.parse(jo.get("date").getAsString(), DateTimeFormatter.ISO_DATE);
          maxEndEq = jo.get("equity").getAsInt();
-         jo = report.getAsJsonObject("total_maxdd");
+         jo = report.getAsJsonObject("latest_maxdd");
          cash = jo.get("cash").getAsDouble();
          pct = jo.get("pct").getAsDouble();
          message += 
@@ -176,6 +176,7 @@ public class StrategyBacktest {
       message += "\n" +
                  "Avg Trade PnL: " + String.format("$%,d", Math.round(report.get("avg_trade_pnl").getAsDouble())) +
                  ", Max DD: " + String.format("$%,d", Math.round(report.get("maxdd").getAsDouble())) +
+                 ", Max DD Pct: " + String.format("%.2f%%", report.get("maxdd_pct").getAsDouble()) +
                  ", Num Trades: " + Integer.toString(report.get("num_trades").getAsInt());
       
       System.out.println(message);

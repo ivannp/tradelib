@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.logging.Logger;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -274,8 +275,9 @@ public abstract class Strategy implements IBrokerListener {
          String query = " INSERT INTO trade_summaries (strategy_id,symbol,type,num_trades,gross_profits, " +
                         "      gross_losses,profit_factor,average_daily_pnl,daily_pnl_stddev,sharpe_ratio, " +
                         "      average_trade_pnl,trade_pnl_stddev,pct_positive,pct_negative,max_win,max_loss, " +
-                        "      average_win,average_loss,average_win_loss,equity_min,equity_max,max_drawdown) " +
-                        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                        "      average_win,average_loss,average_win_loss,equity_min,equity_max,max_drawdown, " +
+                        "      max_drawdown_pct) " +
+                        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
          PreparedStatement stmt = connection.prepareStatement(query);
          stmt.setLong(1, dbId);
          stmt.setString(2, symbol);
@@ -298,7 +300,8 @@ public abstract class Strategy implements IBrokerListener {
          setDoubleParam(stmt, 19, tradeSummary.averageWinLoss);
          setDoubleParam(stmt, 20, tradeSummary.equityMin);
          setDoubleParam(stmt, 21, tradeSummary.equityMax);
-         setDoubleParam(stmt, 22, tradeSummary.maxDrawdown);
+         setDoubleParam(stmt, 22, tradeSummary.maxDD);
+         setDoubleParam(stmt, 23, tradeSummary.maxDDPct);
          stmt.executeUpdate();
          connection.commit();
       }
@@ -848,7 +851,8 @@ public abstract class Strategy implements IBrokerListener {
       double equity = 0.0;
       double maxEquity = Double.MIN_VALUE;
       double minEquity = Double.MAX_VALUE;
-      double maxDrawdown = Double.MAX_VALUE;
+      double maxDD = Double.MAX_VALUE;
+      double maxDDPct = Double.MAX_VALUE;
       
       for(Map.Entry<LocalDateTime,PnlPair> entry : pnlMap.entrySet()) {
          PnlPair pp = entry.getValue();
@@ -866,7 +870,12 @@ public abstract class Strategy implements IBrokerListener {
          equity += pnl;
          maxEquity = Math.max(maxEquity, equity);
          minEquity = Math.min(minEquity, equity);
-         maxDrawdown = Math.min(maxDrawdown, equity - maxEquity);
+         maxDD = Math.min(maxDD, equity - maxEquity);
+         maxDDPct = Math.min(maxDDPct, equity/maxEquity-1);
+         if(Double.isNaN(maxDDPct) || !Double.isFinite(maxDDPct)) {
+            Logger.getLogger("").warning(String.format("Fixing a bad maximum drawdown [%f]", maxDDPct));
+            maxDDPct = Double.MAX_VALUE;
+         }
       }
       
       pstmt.executeBatch();
@@ -877,7 +886,8 @@ public abstract class Strategy implements IBrokerListener {
       TradeSummary summary = allBuilder.summarize();
       summary.equityMin = minEquity;
       summary.equityMax = maxEquity;
-      summary.maxDrawdown = maxDrawdown;
+      summary.maxDD = maxDD;
+      summary.maxDDPct = maxDDPct*100;
 
       summary.averageDailyPnl = barStats.getAverage();
       summary.dailyPnlStdDev = barStats.getStdDev();
@@ -1041,7 +1051,8 @@ public abstract class Strategy implements IBrokerListener {
                      "      average_daily_pnl, daily_pnl_stddev, sharpe_ratio, " +
                      "      average_trade_pnl, trade_pnl_stddev, pct_positive, " +
                      "      pct_negative, max_win, max_loss, average_win, average_loss, " +
-                     "      average_win_loss, equity_min, equity_max, max_drawdown " +
+                     "      average_win_loss, equity_min, equity_max, max_drawdown, " +
+                     "      max_drawdown_pct " +
                      " FROM trade_summaries " +
                      " WHERE strategy_id = ? AND symbol = ? AND type = ?";
       PreparedStatement stmt = connection.prepareStatement(query);
@@ -1070,7 +1081,8 @@ public abstract class Strategy implements IBrokerListener {
       summary.averageWinLoss = rs.getDouble(16);
       summary.equityMin = rs.getDouble(17);
       summary.equityMax = rs.getDouble(18);
-      summary.maxDrawdown = rs.getDouble(19);
+      summary.maxDD = rs.getDouble(19);
+      summary.maxDDPct = rs.getDouble(20);
       
       connection.commit();
       return summary;
@@ -1102,8 +1114,8 @@ public abstract class Strategy implements IBrokerListener {
             
             avgPnl.add(annualStats.get(ii, 0));
             avgPnlPct.add(annualStats.get(ii, 1));
-            avgDD.add(Math.abs(annualStats.get(ii,3)));
-            avgDDPct.add(Math.abs(annualStats.get(ii, 4)));
+            avgDD.add(annualStats.get(ii,3));
+            avgDDPct.add(annualStats.get(ii, 4));
          }
          
          result.add("annual_stats", asa);
@@ -1112,12 +1124,14 @@ public abstract class Strategy implements IBrokerListener {
          result.addProperty("pnl_pct", avgPnlPct.get()*100.0);
          result.addProperty("avgdd", Math.round(avgDD.get()));
          result.addProperty("avgdd_pct", avgDDPct.get()*100.0);
-         result.addProperty("gain_to_pain", avgPnl.get() / avgDD.get());
+         result.addProperty("gain_to_pain", avgPnl.get() / Math.abs(avgDD.get()));
       }
       
       // Global statistics
       LocalDateTime maxDateTime = LocalDateTime.MIN;
       double maxEndEq = Double.MIN_VALUE;
+      double maxDD = Double.MAX_VALUE;
+      double maxDDPct = Double.MAX_VALUE;
       
       Series equity = getEquity();
       for(int ii = 0; ii < equity.size(); ++ii) {
@@ -1125,10 +1139,12 @@ public abstract class Strategy implements IBrokerListener {
             maxEndEq = equity.get(ii);
             maxDateTime = equity.getTimestamp(ii);
          }
+         maxDD = Math.min(maxDD, equity.get(ii) - maxEndEq);
+         maxDDPct = Math.min(maxDDPct, equity.get(ii)/maxEndEq - 1);
       }
       
-      double lastDD = maxEndEq - equity.get(equity.size()-1);
-      double lastDDPct = lastDD/maxEndEq*100;
+      double lastDD = equity.get(equity.size()-1) - maxEndEq;
+      double lastDDPct = (lastDD/maxEndEq)*100;
       
       JsonObject jo = new JsonObject();
       jo.addProperty("cash", lastDD);
@@ -1147,7 +1163,6 @@ public abstract class Strategy implements IBrokerListener {
          int jj = ii - 1;
          
          for(; jj >= 0 && equity.getTimestamp(jj).getYear() == equity.getTimestamp(ii).getYear(); --jj) {
-            
          }
          
          if(equity.getTimestamp(jj).getYear() != equity.getTimestamp(ii).getYear()) {
@@ -1161,8 +1176,8 @@ public abstract class Strategy implements IBrokerListener {
                }
             }
             
-            lastDD = maxEndEq - equity.get(equity.size()-1);
-            lastDDPct = lastDD/maxEndEq*100;
+            lastDD = equity.get(equity.size()-1) - maxEndEq;
+            lastDDPct = (lastDD/maxEndEq)*100;
             
             jo = new JsonObject();
             jo.addProperty("cash", lastDD);
@@ -1180,7 +1195,8 @@ public abstract class Strategy implements IBrokerListener {
       
       TradeSummary summary = getSummary("TOTAL", "All");
       result.addProperty("avg_trade_pnl", Math.round(summary.averageTradePnl));
-      result.addProperty("maxdd", Math.round(summary.maxDrawdown));
+      result.addProperty("maxdd", Math.round(maxDD));
+      result.addProperty("maxdd_pct", maxDDPct*100);
       result.addProperty("num_trades", summary.numTrades);
       
       Gson gson = new GsonBuilder()

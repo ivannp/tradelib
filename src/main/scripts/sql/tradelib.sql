@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS trade_summaries(
     equity_min DOUBLE DEFAULT 0.0,
     equity_max DOUBLE DEFAULT 0.0,
     max_drawdown DOUBLE DEFAULT 0.0,
+    max_drawdown_pct DOUBLE DEFAULT 0.0,
     UNIQUE KEY trade_summaries_unique (strategy_id, symbol, type))
 ENGINE InnoDB;
 
