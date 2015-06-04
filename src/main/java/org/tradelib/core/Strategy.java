@@ -36,6 +36,7 @@ public abstract class Strategy implements IBrokerListener {
    protected List<Execution> executions = new ArrayList<Execution>();
    
    private LocalDateTime tradingStart = LocalDateTime.of(1990, 1, 1, 0, 0);
+   private LocalDateTime tradingStop = LocalDateTime.of(2100, 1, 1, 0, 0);
 
    // protected Portfolio portfolio = new Portfolio();
    protected Account account = new Account();
@@ -1233,6 +1234,34 @@ public abstract class Strategy implements IBrokerListener {
       return order;
    }
    
+   public Order enterLongLimit(String symbol, double limitPrice,long quantity) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterLongLimit(symbol, quantity, limitPrice);
+      broker.submitOrder(order);
+      return order;
+   }
+
+   public Order enterLongLimit(String symbol, double limitPrice, long quantity, String signal) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterLongLimit(symbol, quantity, limitPrice, signal);
+      broker.submitOrder(order);
+      return order;
+   }
+   
+   public Order enterLongLimit(String symbol, double limitPrice, long quantity, String signal, int barsValidFor) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterLongLimit(symbol, quantity, limitPrice, signal);
+      order.setExpiration(barsValidFor);
+      broker.submitOrder(order);
+      return order;
+   }
+   
    public Order enterLongStop(String symbol, double stopPrice,long quantity) throws Exception {
       assert quantity > 0;
       assert broker != null;
@@ -1258,6 +1287,37 @@ public abstract class Strategy implements IBrokerListener {
       Order order = Order.enterLongStop(symbol, quantity, stopPrice, signal);
       order.setExpiration(barsValidFor);
       broker.submitOrder(order);
+      return order;
+   }
+   
+   public Order enterShortLimit(String symbol, double limitPrice, long quantity) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterShortLimit(symbol, quantity, limitPrice);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order enterShortLimit(String symbol, double limitPrice, long quantity, String signal) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterShortLimit(symbol, quantity, limitPrice, signal);
+      broker.submitOrder(order);
+      
+      return order;
+   }
+   
+   public Order enterShortLimit(String symbol, double limitPrice, long quantity, String signal, int barsValidFor) throws Exception {
+      assert quantity > 0;
+      assert broker != null;
+
+      Order order = Order.enterShortLimit(symbol, quantity, limitPrice, signal);
+      order.setExpiration(barsValidFor);
+      broker.submitOrder(order);
+      
       return order;
    }
 
@@ -1448,6 +1508,9 @@ public abstract class Strategy implements IBrokerListener {
    
    public void setTradingStart(LocalDateTime ldt) {tradingStart = ldt; }
    public LocalDateTime getTradingStart() { return tradingStart; }
+   
+   public void setTradingStop(LocalDateTime ldt) {tradingStop = ldt; }
+   public LocalDateTime getTradingStop() { return tradingStop; }
    
    public void updateEndEquity() { getAccount().updateEndEquity(); }
 }
