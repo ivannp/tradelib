@@ -1,6 +1,7 @@
 package org.tradelib.core;
 
 import java.math.BigDecimal;
+import java.util.Currency;
 import java.util.Objects;
 
 public class Instrument {
@@ -13,6 +14,7 @@ public class Instrument {
    private final BigDecimal tick;
    private final BigDecimal bpv;
    private String name;
+   private final Currency currency;
    
    public boolean equals(Object o) {
       if(this == o) return true;
@@ -45,9 +47,18 @@ public class Instrument {
    }
    
    private Instrument(Type type, String symbol, BigDecimal tick, BigDecimal bpv, String name) {
+      this(type, symbol, tick, bpv, name, Currency.getInstance("USD"));
+   }
+   
+   private Instrument(Type type, String symbol, BigDecimal tick, BigDecimal bpv, String name, String currency) {
+      this(type, symbol, tick, bpv, name, Currency.getInstance(currency));
+   }
+   
+   private Instrument(Type type, String symbol, BigDecimal tick, BigDecimal bpv, String name, Currency currency) {
       this.type = type; this.symbol = symbol; this.tick = tick; this.bpv = bpv;
       if(name != null && name.length() > 0) this.name = name;
       else this.name = null;
+      this.currency = currency;
    }
    
    public static Instrument makeFuture(String symbol, BigDecimal tick, BigDecimal bpv) {
@@ -74,6 +85,14 @@ public class Instrument {
       return new Instrument(Type.FOREX, symbol, BigDecimal.valueOf(0.0001), BigDecimal.valueOf(1.0), "");
    }
    
+   public static Instrument makeForex(String symbol, String currency) {
+      return new Instrument(Type.FOREX, symbol, BigDecimal.valueOf(0.0001), BigDecimal.valueOf(1.0), "", currency);
+   }
+   
+   public static Instrument makeForex(String symbol, BigDecimal tick, String currency) {
+      return new Instrument(Type.FOREX, symbol, tick, BigDecimal.valueOf(1.0), "", currency);
+   }
+   
    public static Instrument makeForex(String symbol, BigDecimal tick) {
       return new Instrument(Type.FOREX, symbol, tick, BigDecimal.valueOf(1.0), "");
    }
@@ -88,6 +107,15 @@ public class Instrument {
    
    public String getName() { return name; }
    public void setName(String s) { this.name = s; }
+
+   public Currency getCurrency() { return currency; }
+   public Currency getCounterCurrency() { return getCurrency(); }
+   public Currency getQuoteCurrenty() { return getCurrency(); }
+   
+   public Currency getBaseCurrency() {
+      if(!isForex() || name.length() != 6) return null;
+      return Currency.getInstance(name.substring(0, 3));
+   }
    
    public Type getType() { return type; }
    public boolean isFuture() { return getType() == Type.FUTURE; }

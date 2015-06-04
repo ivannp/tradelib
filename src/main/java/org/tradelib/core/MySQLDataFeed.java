@@ -140,17 +140,26 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       stmt.setString(2, provider);
       ResultSet rs = stmt.executeQuery();
       
+      Instrument result = null;
+      
       if(rs.next()) {
          String type = rs.getString(1);
+         String comment;
          switch(type) {
          case "FUT":
-            return Instrument.makeFuture(symbol, rs.getBigDecimal(2), rs.getBigDecimal(3), rs.getString(4));
+            result = Instrument.makeFuture(symbol, rs.getBigDecimal(2), rs.getBigDecimal(3), rs.getString(4));
+            break;
          case "FX":
-            return Instrument.makeForex(symbol, rs.getBigDecimal(2));
+            comment = rs.getString(4);
+            result = Instrument.makeForex(symbol, rs.getBigDecimal(2), comment.substring(3));
+            break;
          }
       }
       
-      return null;
+      stmt.close();
+      con.close();
+      
+      return result;
    }
 
    @Override
@@ -160,23 +169,25 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       String table = config.getProperty("instruments.variations.table");
       String originalProvider = config.getProperty("instrument.provider");
       
-      if(table == null) {
-         return null;
+      InstrumentVariation result = null;
+      
+      if(table != null) {
+         String query = "SELECT symbol,factor,tick " +
+                        "FROM " + table + " " +
+                        "WHERE original_symbol=? AND original_provider=? AND provider=?";
+         PreparedStatement stmt = con.prepareStatement(query);
+         stmt.setString(1, symbol);
+         stmt.setString(2, originalProvider);
+         stmt.setString(3, provider);
+         ResultSet rs = stmt.executeQuery();
+         
+         if(rs.next()) {
+            result = new InstrumentVariation(rs.getString(1), rs.getBigDecimal(2).doubleValue(), rs.getBigDecimal(3).doubleValue());
+         }
       }
       
-      String query = "SELECT symbol,factor,tick " +
-                     "FROM " + table + " " +
-                     "WHERE original_symbol=? AND original_provider=? AND provider=?";
-      PreparedStatement stmt = con.prepareStatement(query);
-      stmt.setString(1, symbol);
-      stmt.setString(2, originalProvider);
-      stmt.setString(3, provider);
-      ResultSet rs = stmt.executeQuery();
+      con.close();
       
-      if(rs.next()) {
-         return new InstrumentVariation(rs.getString(1), rs.getBigDecimal(2).doubleValue(), rs.getBigDecimal(3).doubleValue());
-      }
-      
-      return null;
+      return result;
    }
 }
