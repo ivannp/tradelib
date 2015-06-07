@@ -152,6 +152,7 @@ public class MySQLDataFeed extends HistoricalDataFeed {
          case "FX":
             comment = rs.getString(4);
             result = Instrument.makeForex(symbol, rs.getBigDecimal(2), comment.substring(3));
+            result.setName(comment);
             break;
          }
       }
