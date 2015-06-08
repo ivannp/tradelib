@@ -41,7 +41,7 @@ public class ZigZagTest {
          double corr = zz.getCorrection();
          int age = zz.getAge();
          int trend = zz.getTrend();
-         System.out.println(String.format("%d: %d, %d, %.2f, %.4f", ii+1, trend, age, corr, zz.getTarget()));
+         // System.out.println(String.format("%d: %d, %d, %.2f, %.4f", ii+1, trend, age, corr, zz.getTarget()));
          assertEquals(zz.getTrend(), expectedTrend[ii]);
          assertEquals(zz.getAge(), expectedAge[ii]);
          assertEquals(zz.getCorrection(), expectedCorr[ii], 0.01);
