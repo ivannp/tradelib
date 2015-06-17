@@ -17,6 +17,7 @@
       <commons.csv.version>1.1</commons.csv.version>
       <open.csv.version>3.3</open.csv.version>
       <javax.mail.version>1.5.3</javax.mail.version>
+      <javax.activation.version>1.1.1</javax.activation.version>
    </properties>
 
    <dependencies>
@@ -57,6 +58,13 @@
          <artifactId>javax.mail</artifactId>
          <version>${javax.mail.version}</version>
       </dependency>
+      
+      <dependency>
+         <groupId>javax.activation</groupId>
+         <artifactId>activation</artifactId>
+         <version>${javax.activation.version}</version>
+      </dependency>
+      
    </dependencies>
 
    <build>
