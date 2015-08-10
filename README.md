@@ -1,4 +1,4 @@
-# tradelib
+# Tradelib
 A Java Framework for Backtesting and Trading
 
 Tradelib has been used in real life, for backtesting and for signal
