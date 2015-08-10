@@ -19,7 +19,8 @@ The code is Java, thus, it should work pretty much everywhere.
 
 ## Challange
 Tradelib is a framework, it is not straightforward to use. Currently there
-aren't any examples. I have implemented a lot of strategies, but, I am too
-lazy to open source any of them. Hence, a challange for you: if you have
-a strategy which you don't mind sharing, and it relatively straightforward,
+aren't any examples. I have implemented a lot of strategies on top of it,
+but, I am unwilling (and, frankly, lazy) to open source any of them. Hence,
+a challange for you: if you have a strategy which you don't mind sharing,
+and it relatively straightforward,
 I may be willing to implement it in Tradelib and to use it as an example.
