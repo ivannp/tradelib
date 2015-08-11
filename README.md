@@ -15,7 +15,7 @@ but slight changes are needed to the table definition files.
 
 Maven is the build tool.
 
-The code is Java, thus, it should work pretty much everywhere.
+The code is Java (Java 8 or higher), thus, it should work pretty much everywhere.
 
 ## Challange
 Tradelib is a framework, it is not straightforward to use. Currently there
