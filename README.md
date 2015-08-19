@@ -10,7 +10,7 @@ ETFs shouldn't be a problem, but work is needed to support Forex,
 especially when USD is not the quote currency.
 
 ## Requirements
-Tradelib uses MySQL, 5.6.4 or higher. It would work with older versions,
+Tradelib uses MySQL 5.6.4 or higher. It would work with older versions,
 but slight changes are needed to the table definition files.
 
 Maven is the build tool.
