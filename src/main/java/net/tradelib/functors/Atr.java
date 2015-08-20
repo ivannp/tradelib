@@ -16,7 +16,7 @@ package net.tradelib.functors;
 
 public class Atr {
    public enum MaType { SMA, EMA }
-   private IMa ima;
+   private IMovingAverage ima;
    private int n;
    private double dn;
    private double close; // Previous close

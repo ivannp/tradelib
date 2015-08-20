@@ -16,7 +16,7 @@ package net.tradelib.functors;
 
 import com.google.common.collect.EvictingQueue;
 
-public class Sma implements IMa {
+public class Sma implements IMovingAverage {
    private double mean;
    private EvictingQueue<Double> cq;
    private final int n;

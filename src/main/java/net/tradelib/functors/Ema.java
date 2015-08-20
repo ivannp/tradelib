@@ -14,7 +14,7 @@
 
 package net.tradelib.functors;
 
-public class Ema implements IMa {
+public class Ema implements IMovingAverage {
    private final int n;
    private final double dn;
    private double previous;

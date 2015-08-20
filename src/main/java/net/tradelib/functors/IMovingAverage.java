@@ -14,7 +14,7 @@
 
 package net.tradelib.functors;
 
-public interface IMa {
+public interface IMovingAverage {
    public double add(double value);
    public double last();
    
