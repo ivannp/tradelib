@@ -57,6 +57,8 @@ public abstract class Strategy implements IBrokerListener {
    
    protected Connection connection = null;
    
+   protected LocalDate lastDay = LocalDate.MIN;
+   
    protected LocalDateTime lastTimestamp = LocalDateTime.MIN;
    
    public LocalDateTime getLastTimestamp() {
@@ -365,12 +367,20 @@ public abstract class Strategy implements IBrokerListener {
       writeTradeSummary(instrument.getSymbol(), type, tradeSummary);
    }
    
+   protected void onNewDay(LocalDate previousDay, LocalDate day) throws Exception {}
+   
    protected void onBarOpen(BarHistory history, Bar bar) throws Exception {}
    protected void onBarClose(BarHistory history, Bar bar) throws Exception {}
    protected void onBarClosed(BarHistory history, Bar bar) throws Exception {}
    protected void onOrderNotification(OrderNotification on) throws Exception {}
    
    public void barOpenHandler(Bar bar) throws Exception {
+      LocalDate newDay = bar.getDateTime().toLocalDate();
+      if(newDay.isAfter(lastDay)) {
+         onNewDay(lastDay, newDay);
+         lastDay = newDay;
+      }
+      
       BarHistory history = barData.getHistory(bar);
       // null means the strategy is not interested in this symbol
       if(history != null) {
