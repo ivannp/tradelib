@@ -61,31 +61,63 @@ public class StrategyText {
          String symbol = rs.getString(4);
          int ndays = rs.getInt(12);
          String contract;
-         if(ndays > 0) {
+         if(ndays > 1) {
             contract = rs.getString(10);
          } else {
             contract = "Roll to " + rs.getString(11);
          }
          
          String signal;
-         double position = rs.getDouble(5);
+         long position = (long)rs.getDouble(5);
          JsonObject jo = new Gson().fromJson(rs.getString(9), JsonObject.class);
          if(position > 0.0) {
-            signal = "Long since " + rs.getString(6);
+            BigDecimal entryPrice;
+            double pnl;
+            try {
+               entryPrice = jo.get("entry_price").getAsBigDecimal();
+               pnl = jo.get("pnl").getAsDouble();
+            } catch(Exception e) {
+               entryPrice = BigDecimal.valueOf(Double.MIN_VALUE);
+               pnl = Double.MIN_VALUE;
+            }
+            signal = String.format("Long [%d] since %s", position, rs.getString(6));
+            // signal = "Long since " + rs.getString(6);
             signal += String.format(" [at %s]. Open equity profit %,d.",
-                        formatBigDecimal(jo.get("entry_price").getAsBigDecimal()),
-                        (int)Math.floor(jo.get("pnl").getAsDouble()));
+                        formatBigDecimal(entryPrice),
+                        (int)Math.floor(pnl));
          } else if(position < 0.0) {
-            signal = "Short since " + rs.getString(6);
+            BigDecimal entryPrice;
+            double pnl;
+            try {
+               entryPrice = jo.get("entry_price").getAsBigDecimal();
+               pnl = jo.get("pnl").getAsDouble();
+            } catch(Exception e) {
+               entryPrice = BigDecimal.valueOf(-1);
+               pnl = -1;
+            }
+            signal = String.format("Short [%d] since %s", Math.abs(position), rs.getString(6));
+            // signal = "Short since " + rs.getString(6);
             signal += String.format(" [at %s]. Open equity profit %,d.",
-                        formatBigDecimal(jo.get("entry_price").getAsBigDecimal()), 
-                        (int)Math.floor(jo.get("pnl").getAsDouble()));
+                        formatBigDecimal(entryPrice), 
+                        (int)Math.floor(pnl));
          } else {
             signal = "Out.";
          }
          
          boolean hasOrder = false;
          JsonArray ja = jo.get("orders").getAsJsonArray();
+         double entryRisk;
+         try {
+            entryRisk = jo.get("entry_risk").getAsDouble();
+         } catch(Exception ee) {
+            entryRisk = Double.NaN;
+         }
+         String profitTarget;
+         try {
+            profitTarget = formatBigDecimal(jo.get("profit_target").getAsBigDecimal());
+         } catch(Exception ee) {
+            profitTarget = null;
+         }
          for(int ii = 0; ii < ja.size(); ++ii) {
             JsonObject jorder = ja.get(ii).getAsJsonObject();
             switch(jorder.get("type").getAsString()) {
@@ -96,24 +128,61 @@ public class StrategyText {
                signal += " Exit short at stop " + formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()) + ".";
                break;
             case "ENTER_LONG":
-               signal += " Enter long at open.";
+               if(!Double.isNaN(entryRisk)){
+                  signal += String.format(" Enter long at open. Risk is %s." , formatDouble(entryRisk, 0, 0));
+               } else {
+                  signal += " Enter long at open.";
+               }
                break;
             case "ENTER_SHORT":
-               signal += " Enter short at open.";
+               if(!Double.isNaN(entryRisk)){
+                  signal += String.format(" Enter short at open. Risk is %s." , formatDouble(entryRisk, 0, 0));
+               } else {
+                  signal += " Enter short at open.";
+               }
                break;
             case "ENTER_LONG_STOP":
-               signal += " Enter long at stop " + formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()) + ".";
+               position = jorder.get("quantity").getAsLong();
+               signal += String.format(
+                              " Enter long [%d] at stop %s.",
+                              position,
+                              formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
+               if(!Double.isNaN(entryRisk)){
+                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+               }
                break;
             case "ENTER_LONG_STOP_LIMIT":
-               signal += " Enter long at limit " + formatBigDecimal(jorder.get("limit_price").getAsBigDecimal()) +
-                     ", stop at " + formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()) + ".";
+               position = jorder.get("quantity").getAsLong();
+               signal += String.format(
+                              " Enter long [%d] at limit %s, stop at %s.",
+                              position,
+                              formatBigDecimal(jorder.get("limit_price").getAsBigDecimal()),
+                              formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
+               if(!Double.isNaN(entryRisk)){
+                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+               }
                break;
             case "ENTER_SHORT_STOP":
-               signal += " Enter short at stop " + formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()) + ".";
+               // signal += " Enter short at stop " + formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()) + ".";
+               position = jorder.get("quantity").getAsLong();
+               signal += String.format(
+                              " Enter short [%d] at stop %s.",
+                              Math.abs(position),
+                              formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
+               if(!Double.isNaN(entryRisk)){
+                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+               }
                break;
             case "ENTER_SHORT_STOP_LIMIT":
-               signal += " Enter short at limit " + formatBigDecimal(jorder.get("limit_price").getAsBigDecimal()) +
-                     ", stop at " + formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()) + ".";
+               position = jorder.get("quantity").getAsLong();
+               signal += String.format(
+                              " Enter short [%d] at limit %s, stop at %s.",
+                              Math.abs(position),
+                              formatBigDecimal(jorder.get("limit_price").getAsBigDecimal()),
+                              formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
+               if(!Double.isNaN(entryRisk)){
+                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+               }
                break;
             case "EXIT_LONG":
                signal += " Exit long at open.";
@@ -137,7 +206,12 @@ public class StrategyText {
             signal += " Last close at " + formatBigDecimal(jo.get("last_close").getAsBigDecimal()) + "."; 
          }
          
-         text += "\n" + name + sep + symbol + sep + contract + sep + signal;
+         if(profitTarget != null) {
+            signal += " Profit target at about " + profitTarget + ".";
+         }
+         
+         text += String.format("\n%20s" + sep + "%4s" + sep + "%10s" + sep + "%s", name, symbol, contract, signal);
+         // text += "\n" + name + sep + symbol + sep + contract + sep + signal;
       }
       
       rs.close();

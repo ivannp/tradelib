@@ -118,7 +118,10 @@ public class StrategyBacktest {
                context.dbUrl,
                strategy.getName(),
                strategy.getLastTimestamp().toLocalDate(),
-               "\t");
+               "   ");
+      
+      System.out.println(signalText);
+      System.out.println();
       
       String message = "";
       

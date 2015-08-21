@@ -72,17 +72,27 @@ public abstract class Strategy implements IBrokerListener {
    
    public void initialize(Context context) throws Exception {
       // Cache some context
-      this.broker = context.broker;
-      this.dbUrl = context.dbUrl;
-      this.broker.addBrokerListener(this);
+      setBroker(context.broker);
+      setDbUrl(context.dbUrl);
    }
    
-   protected void setName(String name) { this.name = name; }
+   public void setName(String name) { this.name = name; }
    public String getName() { return this.name; }
+
+   public void setBroker(IBroker broker) throws Exception {
+      this.broker = broker;
+      this.broker.addBrokerListener(this);
+   }
+
+   public IBroker getBroker() { return broker; }
    
-   protected void setDbUrl(String dbUrl) { this.dbUrl = dbUrl; }
+   public void setDbUrl(String dbUrl) {
+      this.dbUrl = dbUrl;
+   }
    
-   protected IBroker getBroker() { return broker; }
+   public String getDbUrl() {
+      return dbUrl;
+   }
    
    protected void subscribe(String symbol) throws Exception {
       barData.addSymbol(symbol);
@@ -252,7 +262,7 @@ public abstract class Strategy implements IBrokerListener {
             stmt.setLong(5, tradeStats.initialPosition);
             stmt.setLong(6, tradeStats.maxPosition);
             stmt.setLong(7, tradeStats.numTransactions);
-            // System.out.println(tradeStats.pnl.toString());
+            // System.out.println(tradeStats.pnl);
             stmt.setDouble(8, tradeStats.pnl);
             stmt.setDouble(9, tradeStats.pctPnl);
             stmt.setDouble(10, tradeStats.tickPnl);
@@ -961,6 +971,9 @@ public abstract class Strategy implements IBrokerListener {
       public double getEntryRisk() { return entryRisk; }
       public void setEntryRisk(double entryRisk) { this.entryRisk = entryRisk; }
       
+      public double getProfitTarget() { return profitTarget; }
+      public void setProfitTarget(double profitTarget) { this.profitTarget = profitTarget; }
+      
       public LocalDateTime getEntryDateTime() { return since; }
       public void setEntryDateTime(LocalDateTime ldt) { this.since = ldt; }
       
@@ -993,6 +1006,12 @@ public abstract class Strategy implements IBrokerListener {
          jo.addProperty("last_close", getLastTradingClose());
          if(!Double.isNaN(getEntryPrice())) {
             jo.addProperty("entry_price", getEntryPrice());
+         }
+         if(!Double.isNaN(getEntryRisk())) {
+            jo.addProperty("entry_risk", getEntryRisk());
+         }
+         if(!Double.isNaN(getProfitTarget())) {
+            jo.addProperty("profit_target", getProfitTarget());
          }
          if(tradingSymbol != null && !tradingSymbol.isEmpty()) {
             jo.addProperty("trading_symbol", getTradingSymbol());
@@ -1040,14 +1059,16 @@ public abstract class Strategy implements IBrokerListener {
       private String symbol;
       private String tradingSymbol;
       private LocalDateTime ts = null;
-      private double position;
+      private double position = Double.NaN;
       private LocalDateTime since = null;
-      private double pnl;
-      private double lastClose;
-      private double lastTradingClose;
+      private double pnl = Double.NaN;
+      private double lastClose = Double.NaN;
+      private double lastTradingClose = Double.NaN;
       private LocalDateTime lastDateTime = null;
-      private double entryPrice;
-      private double entryRisk;
+      private double entryPrice = Double.NaN;
+      private double entryRisk = Double.NaN;
+      private double profitTarget = Double.NaN;
+
       private List<Order> orders = null;
       private HashMap<String, Double> numericProperties = null;
    }
@@ -1525,6 +1546,14 @@ public abstract class Strategy implements IBrokerListener {
    
    public void setTradingStop(LocalDateTime ldt) {tradingStop = ldt; }
    public LocalDateTime getTradingStop() { return tradingStop; }
+   
+   public void setInitialEquity(LocalDateTime ldt, double initialEquity) {
+      getAccount().setInitialEquity(ldt, initialEquity);
+   }
+   
+   public void setInitialEquity(LocalDate ld, double initialEquity) {
+      getAccount().setInitialEquity(ld.atStartOfDay(), initialEquity);
+   }
    
    public void updateEndEquity() { getAccount().updateEndEquity(); }
 }
