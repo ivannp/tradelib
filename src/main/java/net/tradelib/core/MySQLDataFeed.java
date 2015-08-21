@@ -34,6 +34,55 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    
    private Properties config;
    
+   private String dbUrl;
+   private String barsTable;
+   private String instrumentsTable;
+   private String instrumentProvider;
+   private String instrumentsVariationsTable;
+   
+   public String getInstrumentsTable() {
+      return instrumentsTable;
+   }
+
+   public void setInstrumentsTable(String instrumentsTable) {
+      this.instrumentsTable = instrumentsTable;
+   }
+
+   public String getInstrumentProvider() {
+      return instrumentProvider;
+   }
+
+   public void setInstrumentProvider(String instrumentProvider) {
+      this.instrumentProvider = instrumentProvider;
+   }
+   
+   public String getInstrumentsVariationsTable() {
+      return instrumentsVariationsTable;
+   }
+
+   public void setInstrumentsVariationsTable(String instrumentsVariationsTable) {
+      this.instrumentsVariationsTable = instrumentsVariationsTable;
+   }
+
+   public String getBarsTable() {
+      return barsTable;
+   }
+
+   public void setBarsTable(String barsTable) {
+      this.barsTable = barsTable;
+   }
+
+   public void setDbUrl(String dbUrl) {
+      this.dbUrl = dbUrl;
+   }
+   
+   public String getDbUrl() {
+      return dbUrl;
+   }
+   
+   public MySQLDataFeed() {
+   }
+   
    public MySQLDataFeed(Context context) {
       super(context);
    }
@@ -58,6 +107,12 @@ public class MySQLDataFeed extends HistoricalDataFeed {
             
          }
       }
+      
+      setDbUrl(config.getProperty("db.url"));
+      setBarsTable(config.getProperty("bars.table"));
+      setInstrumentsTable(config.getProperty("instruments.table"));
+      setInstrumentsVariationsTable(config.getProperty("instruments.variations.table"));
+      setInstrumentProvider(config.getProperty("instrument.provider"));
    }
 
    @Override
@@ -70,10 +125,10 @@ public class MySQLDataFeed extends HistoricalDataFeed {
          symbols = symbols + ",\"" + it.next() + "\""; 
       }
       
-      Connection con = DriverManager.getConnection(config.getProperty("db.url"));
+      Connection con = DriverManager.getConnection(getDbUrl());
       
       String query = "SELECT symbol,ts,open,high,low,close,volume " +
-                     "FROM " + config.getProperty("bars.table") + " " +
+                     "FROM " + getBarsTable() + " " +
                      "WHERE symbol IN (" + symbols + ") ";
       if(getFeedStart() != null) query += " AND ts >= DATE(?)";
       if(getFeedStop() != null) query += " AND ts <= DATE(?)";
@@ -142,16 +197,14 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    @Override
    public Instrument getInstrument(String symbol) throws SQLException {
       
-      Connection con = DriverManager.getConnection(config.getProperty("db.url"));
-      String table = config.getProperty("instruments.table");
-      String provider = config.getProperty("instrument.provider");
+      Connection con = DriverManager.getConnection(getDbUrl());
       
       String query = "SELECT type,tick,bpv,comment,exchange " +
-                     "FROM " + table + " " +
+                     "FROM " + getInstrumentsTable() + " " +
                      "WHERE symbol=? AND provider=?";
       PreparedStatement stmt = con.prepareStatement(query);
       stmt.setString(1, symbol);
-      stmt.setString(2, provider);
+      stmt.setString(2, getInstrumentProvider());
       ResultSet rs = stmt.executeQuery();
       
       Instrument result = null;
@@ -180,19 +233,17 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    @Override
    public InstrumentVariation getInstrumentVariation(String provider, String symbol) throws SQLException {
       
-      Connection con = DriverManager.getConnection(config.getProperty("db.url"));
-      String table = config.getProperty("instruments.variations.table");
-      String originalProvider = config.getProperty("instrument.provider");
+      Connection con = DriverManager.getConnection(getDbUrl());
       
       InstrumentVariation result = null;
       
-      if(table != null) {
+      if(getInstrumentsVariationsTable() != null) {
          String query = "SELECT symbol,factor,tick " +
-                        "FROM " + table + " " +
+                        "FROM " + getInstrumentsVariationsTable() + " " +
                         "WHERE original_symbol=? AND original_provider=? AND provider=?";
          PreparedStatement stmt = con.prepareStatement(query);
          stmt.setString(1, symbol);
-         stmt.setString(2, originalProvider);
+         stmt.setString(2, getInstrumentProvider());
          stmt.setString(3, provider);
          ResultSet rs = stmt.executeQuery();
          

@@ -15,6 +15,7 @@
 package net.tradelib.core;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 
 import com.google.common.eventbus.EventBus;
@@ -46,9 +47,13 @@ public abstract class HistoricalDataFeed {
    
    protected HashSet<IBarListener> barListeners;
    
-   public HistoricalDataFeed(Context context) {
+   public HistoricalDataFeed() {
       subscriptions = new HashSet<String>();
       barListeners = new HashSet<IBarListener>();
+   }
+   
+   public HistoricalDataFeed(Context context) {
+      this();
    }
    
    public abstract void configure(String config) throws Exception;
@@ -74,6 +79,7 @@ public abstract class HistoricalDataFeed {
    
    public LocalDateTime getFeedStart() { return feedStart; }
    public void setFeedStart(LocalDateTime ldt) { this.feedStart = ldt; }
+
    public void setFeedStop(LocalDateTime ldt) { this.feedStop = ldt; }
    public LocalDateTime getFeedStop() { return feedStop; }
 }

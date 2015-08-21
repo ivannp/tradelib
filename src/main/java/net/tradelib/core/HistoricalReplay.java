@@ -26,6 +26,20 @@ public class HistoricalReplay implements IBroker, IBarListener {
    
    private static final Logger logger = Logger.getLogger(HistoricalReplay.class.getName());
    
+   private HashMap<String,InstrumentCB> instrumentCBMap;
+   private HistoricalDataFeed dataFeed = null;
+
+   public HistoricalDataFeed getDataFeed() {
+      return dataFeed;
+   }
+
+   public void setDataFeed(HistoricalDataFeed dataFeed) {
+      this.dataFeed = dataFeed;
+      this.dataFeed.addBarListener(this);
+   }
+
+   private Portfolio portfolio = null;
+   
    private LocalDateTime lastBarTimestamp = null;
    // The bars belonging to this period (a day)
    private List<Bar> periodsBars = new ArrayList<Bar>();
@@ -38,13 +52,16 @@ public class HistoricalReplay implements IBroker, IBarListener {
    
    protected IBrokerListener handler;
    
-   public HistoricalReplay(Context context) {
-      assert context.historicalDataFeed != null;
-      dataFeed = context.historicalDataFeed;
-      dataFeed.addBarListener(this);
-
+   public HistoricalReplay() {
       instrumentCBMap = new HashMap<String, InstrumentCB>();
       portfolio = new Portfolio("default");
+   }
+   
+   public HistoricalReplay(Context context) {
+      this();
+      
+      assert context.historicalDataFeed != null;
+      setDataFeed(context.historicalDataFeed);
    }
    
    public void start() throws Exception {
@@ -111,10 +128,6 @@ public class HistoricalReplay implements IBroker, IBarListener {
          newOrders = new ArrayList<Order>();
       }
    }
-   
-   private HashMap<String,InstrumentCB> instrumentCBMap;
-   private HistoricalDataFeed dataFeed = null;
-   private Portfolio portfolio = null;
    
    private InstrumentCB getInstrumentCB(String symbol) throws Exception {
       InstrumentCB icb = instrumentCBMap.get(symbol);

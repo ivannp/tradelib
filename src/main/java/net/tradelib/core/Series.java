@@ -136,6 +136,14 @@ public class Series {
       return get(ts, columnNames.get(colName));
    }
    
+   public List<Double> getColumn(int colId) {
+      return data.get(colId);
+   }
+   
+   public List<Double> getColumn() {
+      return data.get(0);
+   }
+   
    public void set(int row, double value) {
       data.get(0).set(row, value);
    }
