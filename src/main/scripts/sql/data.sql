@@ -272,6 +272,21 @@ CREATE TABLE IF NOT EXISTS clc_non (
    UNIQUE INDEX cn_unique (symbol,ts))
 ENGINE = InnoDB;
 
+DROP TABLE IF EXISTS clc_rad;
+CREATE TABLE IF NOT EXISTS clc_rad (
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	symbol VARCHAR(32) NOT NULL,
+	ts DATE NOT NULL,
+	open DECIMAL(18,8) NOT NULL,
+	high DECIMAL(18,8) NOT NULL,
+	low DECIMAL(18,8) NOT NULL,
+	close DECIMAL(18,8) NOT NULL,
+	contract_interest BIGINT NOT NULL,
+	volume BIGINT NOT NULL,
+	total_interest BIGINT NOT NULL,
+   UNIQUE INDEX cn_unique (symbol,ts))
+ENGINE = InnoDB;
+
 DROP TABLE IF EXISTS csi_bars;
 CREATE TABLE IF NOT EXISTS csi_bars (
 	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
@@ -480,6 +495,7 @@ GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.instrument_variation TO 'qboss'
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_index TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_rev TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_non TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.clc_rad TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.csi_bars TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.kv TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON quintuitive.categories TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';

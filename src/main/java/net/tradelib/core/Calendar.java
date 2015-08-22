@@ -17,7 +17,7 @@ public class Calendar {
     * 
     * @return A date which is the same for all days of the week.
     * 
-    * @throws SQLException 
+    * @throws Exception 
     */
    public static LocalDate toWeek(LocalDate ld, DayOfWeek anchor) throws Exception {
       DayOfWeek dow = ld.getDayOfWeek();
