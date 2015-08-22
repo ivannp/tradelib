@@ -15,6 +15,7 @@
       <guava.version>18.0</guava.version>
       <mysql.version>5.1.35</mysql.version>
       <commons.csv.version>1.1</commons.csv.version>
+      <commons.math.version>3.5</commons.math.version>
       <open.csv.version>3.3</open.csv.version>
       <javax.mail.version>1.5.3</javax.mail.version>
       <javax.activation.version>1.1.1</javax.activation.version>
@@ -47,6 +48,12 @@
          <artifactId>commons-csv</artifactId>
          <version>${commons.csv.version}</version>
       </dependency>
+      <dependency>
+         <groupId>org.apache.commons</groupId>
+         <artifactId>commons-math3</artifactId>
+         <version>${commons.math.version}</version>
+      </dependency>
+
       <dependency>
          <groupId>com.opencsv</groupId>
          <artifactId>opencsv</artifactId>
