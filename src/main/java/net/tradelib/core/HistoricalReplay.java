@@ -494,4 +494,22 @@ public class HistoricalReplay implements IBroker, IBarListener {
    public void addBrokerListener(IBrokerListener listener) throws Exception {
       handler = listener;
    }
+
+   @Override
+   public void cancelAllOrders() throws Exception {
+      for(InstrumentCB icb : instrumentCBMap.values()) {
+         for(Order oo : icb.orders) {
+            if(!oo.isCancelled()) oo.cancel();
+         }
+      }
+   }
+
+   @Override
+   public void cancelAllOrders(String symbol) throws Exception {
+      InstrumentCB icb = getInstrumentCB(symbol);
+      if(icb == null) return;
+      for(Order oo : icb.orders) {
+         if(!oo.isCancelled()) oo.cancel();
+      }
+   }
 }

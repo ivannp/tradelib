@@ -22,6 +22,9 @@ public interface IBroker {
    
    public void submitOrder(Order order) throws Exception;
    
+   public void cancelAllOrders() throws Exception;
+   public void cancelAllOrders(String symbol) throws Exception;
+   
    // Resets all runtime data, but leaves the configuration
    public void reset() throws Exception;
    
