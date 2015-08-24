@@ -61,6 +61,9 @@ public abstract class Strategy implements IBrokerListener {
    
    protected LocalDateTime lastTimestamp = LocalDateTime.MIN;
    
+   protected boolean checkBars = true;
+   protected boolean maintainAccount = true;
+   
    public LocalDateTime getLastTimestamp() {
       return lastTimestamp;
    }
@@ -375,9 +378,19 @@ public abstract class Strategy implements IBrokerListener {
    protected void onOrderNotification(OrderNotification on) throws Exception {}
    
    public void barOpenHandler(Bar bar) throws Exception {
+      checkBar(bar);
+
       LocalDate newDay = bar.getDateTime().toLocalDate();
+      
       if(newDay.isAfter(lastDay)) {
-         onNewDay(lastDay, newDay);
+         // Update the account equity once per day
+         if(!lastDay.equals(LocalDate.MIN) && maintainAccount) {
+            getAccount().updateEndEquity(lastDay.atTime(23, 59, 59));
+            
+            // Signal a new day has started
+            onNewDay(lastDay, newDay);
+         }
+         
          lastDay = newDay;
       }
       
@@ -389,6 +402,8 @@ public abstract class Strategy implements IBrokerListener {
    }
 
    public void barCloseHandler(Bar bar) throws Exception {
+      checkBar(bar);
+
       BarHistory history = barData.getHistory(bar);
       // null means the strategy is not interested in this symbol
       if(history != null) {
@@ -398,6 +413,8 @@ public abstract class Strategy implements IBrokerListener {
    }
 
    public void barClosedHandler(Bar bar) throws Exception {
+      checkBar(bar);
+
       BarHistory history = barData.getHistory(bar);
       // null means the strategy is not interested in this symbol
       if(history != null) {
@@ -406,6 +423,18 @@ public abstract class Strategy implements IBrokerListener {
       
       if(bar.getDateTime().isAfter(lastTimestamp)) {
          lastTimestamp = bar.getDateTime();
+      }
+   }
+   
+   protected void checkBar(Bar bar) throws Exception {
+      if(checkBars &&
+         (bar.getOpen() <= 0 || bar.getHigh() <= 0 ||  
+         bar.getLow() <= 0 || bar.getClose() <= 0)) {
+         throw new RuntimeException(
+                     String.format(
+                              "Negative data for %s [%2$tY-%2$tm-%2$td]: %3$f %4$f %5$f %6$f",
+                              bar.getSymbol(), bar.getDateTime(), bar.getOpen(),
+                              bar.getHigh(), bar.getLow(), bar.getClose()));
       }
    }
 
