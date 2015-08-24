@@ -24,6 +24,7 @@ public class SortinoRatio {
          double dd = (returns.get(ii) - rf) * multiplier;
          fullStats.addValue(dd);
          if(dd < rf) downStats.addValue(dd);
+         else downStats.addValue(0);
       }
       
       if(downStats.getN() == 0) return Double.MAX_VALUE;
