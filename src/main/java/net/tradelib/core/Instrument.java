@@ -111,6 +111,17 @@ public class Instrument {
       return new Instrument(Type.FOREX, symbol, tick, BigDecimal.valueOf(1.0), "");
    }
    
+   public static Instrument make(Type type, String symbol) {
+      Instrument result = null;
+      switch(type) {
+      case FUTURE: result = makeFuture(symbol); break;
+      case INDEX: result = makeIndex(symbol); break;
+      case STOCK: result = makeStock(symbol); break;
+      case FOREX: result = makeForex(symbol); break;
+      }
+      return result;
+   }
+   
    public double getTick() { return tick.doubleValue(); }
    public BigDecimal getTickPrecise() { return tick; }
    

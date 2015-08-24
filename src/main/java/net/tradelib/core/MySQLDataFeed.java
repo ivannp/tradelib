@@ -40,6 +40,8 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    private String instrumentProvider;
    private String instrumentsVariationsTable;
    
+   private String defaultInstrument = null;
+   
    public String getInstrumentsTable() {
       return instrumentsTable;
    }
@@ -78,6 +80,10 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    
    public String getDbUrl() {
       return dbUrl;
+   }
+   
+   public void setDefaultInstrument(String s) {
+      defaultInstrument = s;
    }
    
    public MySQLDataFeed() {
@@ -156,9 +162,9 @@ public class MySQLDataFeed extends HistoricalDataFeed {
                Integer count = counters.get(queue.peek().getSymbol());
                if(count != null && count > 1) readRecord = false;
             }
-            
+
             if(!readRecord) break;
-            
+
             // Read a bar, add it to the queue and to the counting hash.
             Bar bar = new Bar(rs.getString(1), rs.getTimestamp(2).toLocalDateTime(),
                               rs.getBigDecimal(3).doubleValue(),
@@ -226,6 +232,11 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       
       stmt.close();
       con.close();
+      
+      // If a default instrument was set, use it
+      if(result == null && defaultInstrument != null) {
+         result = Instrument.make(Instrument.Type.valueOf(defaultInstrument), symbol);
+      }
       
       return result;
    }
