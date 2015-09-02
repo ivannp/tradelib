@@ -181,7 +181,7 @@ INSERT INTO instrument_variation VALUES(32,'ib','NKD','pinnacle','NK',1.0,5.0);
 INSERT INTO instrument_variation VALUES(101,'ib','AUD','csi','AD',1.0,0.0001);
 INSERT INTO instrument_variation VALUES(102,'ib','ZL','csi','BO2',1.0,0.01);
 INSERT INTO instrument_variation VALUES(103,'ib','GBP','csi','BP',1.0,0.0001);
-INSERT INTO instrument_variation VALUES(104,'ib','ZC','csi','C2',1.0,0.025);
+INSERT INTO instrument_variation VALUES(104,'ib','ZC','csi','C2',1.0,0.25);
 INSERT INTO instrument_variation VALUES(105,'ib','CC','csi','CC2',1.0,1.0);
 INSERT INTO instrument_variation VALUES(106,'ib','CAD','csi','CD',1.0,0.0001);
 INSERT INTO instrument_variation VALUES(107,'ib','CL','csi','CL2',1.0,0.01);

@@ -23,6 +23,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -34,7 +36,26 @@ public class StrategyText {
       String text = "";
       
       Connection connection = DriverManager.getConnection(dbUrl);
-      connection.setAutoCommit(false);
+      
+      List<InstrumentText> lit = StrategyText.buildList(connection, strategy, date);
+      for(InstrumentText it : lit) {
+         if(!it.isSection()) {
+            text += String.format(
+                        "\n%20s" + sep + "%4s" + sep + "%10s" + sep + "%s",
+                        it.getName(),
+                        it.getSymbol(),
+                        it.getExpiration(),
+                        it.getStatus());
+         }
+      }
+      
+      connection.close();
+      
+      return text;
+   }
+   
+   public static List<InstrumentText> buildList(Connection con, String strategy, LocalDate date) throws Exception {
+      ArrayList<InstrumentText> result = new ArrayList<InstrumentText>();
       
       String query;
       
@@ -52,11 +73,17 @@ public class StrategyText {
             " WHERE s.name = ? AND DATE(spos.last_ts) = DATE(?) " +
             " ORDER BY cid, iv.ord";
       
-      PreparedStatement pstmt = connection.prepareStatement(query);
+      String prevCategory = "";
+      PreparedStatement pstmt = con.prepareStatement(query);
       pstmt.setString(1, strategy);
       pstmt.setTimestamp(2, Timestamp.valueOf(date.atStartOfDay()));
       ResultSet rs = pstmt.executeQuery();
       while(rs.next()) {
+         String category = rs.getString(2);
+         if(!category.equals(prevCategory)) {
+            result.add(InstrumentText.makeSection(category));
+            prevCategory = category;
+         }
          String name = rs.getString(3);
          String symbol = rs.getString(4);
          int ndays = rs.getInt(12);
@@ -118,6 +145,12 @@ public class StrategyText {
          } catch(Exception ee) {
             profitTarget = null;
          }
+         String stopLoss;
+         try {
+            stopLoss = formatBigDecimal(jo.get("stop_loss").getAsBigDecimal());
+         } catch(Exception ee) {
+            stopLoss = null;
+         }
          for(int ii = 0; ii < ja.size(); ++ii) {
             JsonObject jorder = ja.get(ii).getAsJsonObject();
             switch(jorder.get("type").getAsString()) {
@@ -129,14 +162,14 @@ public class StrategyText {
                break;
             case "ENTER_LONG":
                if(!Double.isNaN(entryRisk)){
-                  signal += String.format(" Enter long at open. Risk is %s." , formatDouble(entryRisk, 0, 0));
+                  signal += String.format(" Enter long at open. Contract risk is %s." , formatDouble(entryRisk, 0, 0));
                } else {
                   signal += " Enter long at open.";
                }
                break;
             case "ENTER_SHORT":
                if(!Double.isNaN(entryRisk)){
-                  signal += String.format(" Enter short at open. Risk is %s." , formatDouble(entryRisk, 0, 0));
+                  signal += String.format(" Enter short at open. Contract risk is %s." , formatDouble(entryRisk, 0, 0));
                } else {
                   signal += " Enter short at open.";
                }
@@ -148,7 +181,7 @@ public class StrategyText {
                               position,
                               formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
                if(!Double.isNaN(entryRisk)){
-                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+                  signal += String.format(" Contract risk is %s." , formatDouble(entryRisk, 0, 0));
                }
                break;
             case "ENTER_LONG_STOP_LIMIT":
@@ -159,7 +192,7 @@ public class StrategyText {
                               formatBigDecimal(jorder.get("limit_price").getAsBigDecimal()),
                               formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
                if(!Double.isNaN(entryRisk)){
-                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+                  signal += String.format(" Contract risk is %s." , formatDouble(entryRisk, 0, 0));
                }
                break;
             case "ENTER_SHORT_STOP":
@@ -170,7 +203,7 @@ public class StrategyText {
                               Math.abs(position),
                               formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
                if(!Double.isNaN(entryRisk)){
-                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+                  signal += String.format(" Contract risk is %s." , formatDouble(entryRisk, 0, 0));
                }
                break;
             case "ENTER_SHORT_STOP_LIMIT":
@@ -181,7 +214,7 @@ public class StrategyText {
                               formatBigDecimal(jorder.get("limit_price").getAsBigDecimal()),
                               formatBigDecimal(jorder.get("stop_price").getAsBigDecimal()));
                if(!Double.isNaN(entryRisk)){
-                  signal += String.format(" Risk is %s." , formatDouble(entryRisk, 0, 0));
+                  signal += String.format(" Contract risk is %s." , formatDouble(entryRisk, 0, 0));
                }
                break;
             case "EXIT_LONG":
@@ -206,18 +239,21 @@ public class StrategyText {
             signal += " Last close at " + formatBigDecimal(jo.get("last_close").getAsBigDecimal()) + "."; 
          }
          
+         if(stopLoss != null) {
+            signal += " Stop loss at " + stopLoss + ".";
+         }
+         
          if(profitTarget != null) {
             signal += " Profit target at about " + profitTarget + ".";
          }
          
-         text += String.format("\n%20s" + sep + "%4s" + sep + "%10s" + sep + "%s", name, symbol, contract, signal);
-         // text += "\n" + name + sep + symbol + sep + contract + sep + signal;
+         result.add(InstrumentText.make(name, symbol, contract, signal));
       }
       
       rs.close();
       pstmt.close();
       
-      return text;
+      return result;
    }
    
    static private String formatBigDecimal(BigDecimal bd, int minPrecision, int maxPrecision) {
