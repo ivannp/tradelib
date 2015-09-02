@@ -63,6 +63,20 @@ public abstract class Strategy implements IBrokerListener {
    
    protected boolean checkBars = true;
    protected boolean maintainAccount = true;
+   // True if old positions should be deleted from the database
+   protected boolean cleanupPositions = true;
+   
+   public void setCleanupPositions(boolean b) {
+      this.cleanupPositions = b;
+   }
+   
+   public void setMaintainAccount(boolean b) {
+      this.maintainAccount = b;
+   }
+   
+   public void setCheckBars(boolean b) {
+      this.checkBars = b;
+   }
    
    public LocalDateTime getLastTimestamp() {
       return lastTimestamp;
@@ -136,11 +150,13 @@ public abstract class Strategy implements IBrokerListener {
       stmt.executeUpdate();
       stmt.close();
       
-//      query = "DELETE FROM strategy_positions WHERE strategy_id=?"; 
-//      stmt = connection.prepareStatement(query);
-//      stmt.setLong(1, dbId);
-//      stmt.executeUpdate();
-//      stmt.close();
+      if(cleanupPositions) {
+         query = "DELETE FROM strategy_positions WHERE strategy_id=?"; 
+         stmt = connection.prepareStatement(query);
+         stmt.setLong(1, dbId);
+         stmt.executeUpdate();
+         stmt.close();
+      }
       
       query = "DELETE FROM end_equity WHERE strategy_id=?"; 
       stmt = connection.prepareStatement(query);
@@ -1016,6 +1032,9 @@ public abstract class Strategy implements IBrokerListener {
       public LocalDateTime getEntryDateTime() { return since; }
       public void setEntryDateTime(LocalDateTime ldt) { this.since = ldt; }
       
+      public double getStopLoss() { return stopLoss; }
+      public void setStopLoss(double stopLoss) { this.stopLoss = stopLoss; }
+      
       public void addOrder(Order order) { orders.add(order); }
       
       public Status(String symbol) {
@@ -1051,6 +1070,9 @@ public abstract class Strategy implements IBrokerListener {
          }
          if(!Double.isNaN(getProfitTarget())) {
             jo.addProperty("profit_target", getProfitTarget());
+         }
+         if(!Double.isNaN(getStopLoss())) {
+            jo.addProperty("stop_loss", getStopLoss());
          }
          if(tradingSymbol != null && !tradingSymbol.isEmpty()) {
             jo.addProperty("trading_symbol", getTradingSymbol());
@@ -1107,6 +1129,7 @@ public abstract class Strategy implements IBrokerListener {
       private double entryPrice = Double.NaN;
       private double entryRisk = Double.NaN;
       private double profitTarget = Double.NaN;
+      private double stopLoss = Double.NaN;
 
       private List<Order> orders = null;
       private HashMap<String, Double> numericProperties = null;
