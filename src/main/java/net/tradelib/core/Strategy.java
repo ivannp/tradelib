@@ -430,6 +430,11 @@ public abstract class Strategy implements IBrokerListener {
 
    public void barClosedHandler(Bar bar) throws Exception {
       checkBar(bar);
+      
+      if(bar.getDateTime().isAfter(getTradingStart()) && maintainAccount) {
+         Instrument instrument = broker.getInstrument(bar.getSymbol());
+         getAccount().mark(instrument, bar);
+      }
 
       BarHistory history = barData.getHistory(bar);
       // null means the strategy is not interested in this symbol
