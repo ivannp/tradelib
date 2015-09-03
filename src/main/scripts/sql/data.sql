@@ -311,6 +311,14 @@ CREATE TABLE IF NOT EXISTS kv (
    UNIQUE INDEX kv_unique(key_text))
 ENGINE = InnoDB;
 
+DROP TABLE IF EXISTS kv_bin;
+CREATE TABLE IF NOT EXISTS kv_bin (
+   id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+   key_text VARCHAR(200),
+   value_bin BLOB,
+   UNIQUE INDEX kv_bin_unique(key_text))
+ENGINE = InnoDB;
+
 DROP TABLE IF EXISTS categories;
 CREATE TABLE categories (
    id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
