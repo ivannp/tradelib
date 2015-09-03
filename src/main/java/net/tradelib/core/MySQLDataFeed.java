@@ -25,7 +25,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
@@ -41,6 +40,8 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    private String instrumentsVariationsTable;
    
    private String defaultInstrument = null;
+   
+   private HashMap<String, Instrument> instrumentCache = new HashMap<String, Instrument>();
    
    public String getInstrumentsTable() {
       return instrumentsTable;
@@ -203,6 +204,9 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    @Override
    public Instrument getInstrument(String symbol) throws SQLException {
       
+      Instrument result = instrumentCache.get(symbol);
+      if(result != null) return result;
+      
       Connection con = DriverManager.getConnection(getDbUrl());
       
       String query = "SELECT type,tick,bpv,comment,exchange " +
@@ -212,8 +216,6 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       stmt.setString(1, symbol);
       stmt.setString(2, getInstrumentProvider());
       ResultSet rs = stmt.executeQuery();
-      
-      Instrument result = null;
       
       if(rs.next()) {
          String type = rs.getString(1);
@@ -237,6 +239,8 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       if(result == null && defaultInstrument != null) {
          result = Instrument.make(Instrument.Type.valueOf(defaultInstrument), symbol);
       }
+      
+      instrumentCache.put(symbol, result);
       
       return result;
    }
