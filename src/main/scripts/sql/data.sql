@@ -506,6 +506,7 @@ GRANT DELETE,INSERT,SELECT,UPDATE ON clc_non TO 'qboss'@'localhost' IDENTIFIED B
 GRANT DELETE,INSERT,SELECT,UPDATE ON clc_rad TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON csi_bars TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON kv TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON kv_bin TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON categories TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON instrument_visiable TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON instrument_exchange TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
