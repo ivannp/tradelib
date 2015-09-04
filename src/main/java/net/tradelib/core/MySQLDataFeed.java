@@ -28,6 +28,11 @@ import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 public class MySQLDataFeed extends HistoricalDataFeed {
    
@@ -41,7 +46,7 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    
    private String defaultInstrument = null;
    
-   private HashMap<String, Instrument> instrumentCache = new HashMap<String, Instrument>();
+   private LoadingCache<String, Instrument> instrumentCache; 
    
    public String getInstrumentsTable() {
       return instrumentsTable;
@@ -88,10 +93,12 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    }
    
    public MySQLDataFeed() {
+      newInstrumentCache();
    }
    
    public MySQLDataFeed(Context context) {
       super(context);
+      newInstrumentCache();
    }
 
    /**
@@ -202,10 +209,40 @@ public class MySQLDataFeed extends HistoricalDataFeed {
    }
 
    @Override
-   public Instrument getInstrument(String symbol) throws SQLException {
+   public Instrument getInstrument(String symbol) throws Exception {
+      return instrumentCache.get(symbol);
+   }
+
+   @Override
+   public InstrumentVariation getInstrumentVariation(String provider, String symbol) throws SQLException {
       
-      Instrument result = instrumentCache.get(symbol);
-      if(result != null) return result;
+      Connection con = DriverManager.getConnection(getDbUrl());
+      
+      InstrumentVariation result = null;
+      
+      if(getInstrumentsVariationsTable() != null) {
+         String query = "SELECT symbol,factor,tick " +
+                        "FROM " + getInstrumentsVariationsTable() + " " +
+                        "WHERE original_symbol=? AND original_provider=? AND provider=?";
+         PreparedStatement stmt = con.prepareStatement(query);
+         stmt.setString(1, symbol);
+         stmt.setString(2, getInstrumentProvider());
+         stmt.setString(3, provider);
+         ResultSet rs = stmt.executeQuery();
+         
+         if(rs.next()) {
+            result = new InstrumentVariation(rs.getString(1), rs.getBigDecimal(2).doubleValue(), rs.getBigDecimal(3).doubleValue());
+         }
+      }
+      
+      con.close();
+      
+      return result;
+   }
+   
+   private Instrument loadInstrument(String symbol) throws SQLException {
+      
+      Instrument result = null;
       
       Connection con = DriverManager.getConnection(getDbUrl());
       
@@ -240,35 +277,19 @@ public class MySQLDataFeed extends HistoricalDataFeed {
          result = Instrument.make(Instrument.Type.valueOf(defaultInstrument), symbol);
       }
       
-      instrumentCache.put(symbol, result);
-      
       return result;
    }
-
-   @Override
-   public InstrumentVariation getInstrumentVariation(String provider, String symbol) throws SQLException {
-      
-      Connection con = DriverManager.getConnection(getDbUrl());
-      
-      InstrumentVariation result = null;
-      
-      if(getInstrumentsVariationsTable() != null) {
-         String query = "SELECT symbol,factor,tick " +
-                        "FROM " + getInstrumentsVariationsTable() + " " +
-                        "WHERE original_symbol=? AND original_provider=? AND provider=?";
-         PreparedStatement stmt = con.prepareStatement(query);
-         stmt.setString(1, symbol);
-         stmt.setString(2, getInstrumentProvider());
-         stmt.setString(3, provider);
-         ResultSet rs = stmt.executeQuery();
-         
-         if(rs.next()) {
-            result = new InstrumentVariation(rs.getString(1), rs.getBigDecimal(2).doubleValue(), rs.getBigDecimal(3).doubleValue());
-         }
-      }
-      
-      con.close();
-      
-      return result;
+   
+   private void newInstrumentCache() {
+      CacheLoader<String, Instrument> cl =
+            new CacheLoader<String, Instrument>() {
+               public Instrument load(String symbol) throws SQLException {
+                  return loadInstrument(symbol);
+               }
+            };
+      instrumentCache = CacheBuilder
+                           .newBuilder()
+                           .maximumSize(1000)
+                           .build(cl);
    }
 }
