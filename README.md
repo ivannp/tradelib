@@ -17,6 +17,9 @@ Maven is the build tool.
 
 The code is Java (Java 8 or higher), thus, it should work pretty much everywhere.
 
+## Wiki
+For more information go to the [project wiki page](https://github.com/ivannp/tradelib/wiki).
+
 ## Challange
 Tradelib is a framework, it is not straightforward to use. Currently there
 aren't any examples. I have implemented a lot of strategies on top of it,
