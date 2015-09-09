@@ -87,4 +87,33 @@ public class SeriesTest {
       assertEquals(0.0, tt.get(LocalDateTime.of(2014, 2, 18, 0, 0), 0), 1e-8);
       // tt.head(10).print("yyyy-MM-dd");
    }
+   
+   @Test
+   public void testLag() throws Exception {
+      Series ss = Series.fromCsv(
+                              Paths.get(getClass().getResource("/data/es.csv").toURI()).toString(),
+                              false,
+                              DateTimeFormatter.BASIC_ISO_DATE, LocalTime.of(17, 0));
+      ss.setNames("open", "high", "low", "close", "volume", "interest");
+      
+      Series lag1 = ss.clone().lag(1);
+      for(int ii = 1; ii < lag1.size(); ++ii) {
+         assertEquals(lag1.get(ii, "close"), ss.get(ii-1, "close"), 1e-8);
+      }
+      
+      lag1 = ss.clone().lag(-1);
+      for(int ii = 0; ii < (lag1.size() - 1); ++ii) {
+         assertEquals(lag1.get(ii, "close"), ss.get(ii+1, "close"), 1e-8);
+      }
+      
+      Series lag3 = ss.clone().lag(3);
+      for(int ii = 3; ii < lag3.size(); ++ii) {
+         assertEquals(lag3.get(ii, "close"), ss.get(ii-3, "close"), 1e-8);
+      }
+      
+      lag3 = ss.clone().lag(-3);
+      for(int ii = 0; ii < (lag3.size() - 3); ++ii) {
+         assertEquals(lag3.get(ii, "close"), ss.get(ii+3, "close"), 1e-8);
+      }
+   }
 }

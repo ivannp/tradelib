@@ -33,7 +33,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
-public class Series {
+public class Series implements Cloneable {
    private List<LocalDateTime> index;
    List<List<Double>> data;
    
@@ -323,6 +323,85 @@ public class Series {
          if(index.get(ii).isBefore(index.get(ii-1))) return false;
       }
       return true;
+   }
+   
+   /**
+    * @brief Clones (deep copy) of the object.
+    * 
+    * @return The copy.
+    */
+   public Series clone() {
+      Series result = new Series();
+      
+      result.index = new ArrayList<LocalDateTime>(index);
+      
+      result.data = new ArrayList<List<Double>>(data.size());
+      for(int ii = 0; ii < data.size(); ++ii) {
+         ArrayList<Double> column = new ArrayList<Double>();
+         column.addAll(data.get(ii));
+         result.data.add(column);
+      }
+      
+      if(columnNames != null) {
+         result.columnNames = new HashMap<String, Integer>(columnNames);
+      }
+      
+      return result;     
+   }
+   
+   /**
+    * @brief Shifts the series k-periods down.
+    * 
+    * k can be negative (shift to the left) or negative (shift to the right).
+    * NAs are appended/prepended to the series.
+    * 
+    * @return The lagged (shifted) time series.
+    */
+   public Series lag(int k) {
+      if(k < 0) {
+         int ii = 0;
+         int jj = -k;
+         for(; jj < index.size(); ++ii, ++jj) {
+            for(int col = 0; col < data.size(); ++col) {
+               data.get(col).set(ii, data.get(col).get(jj));
+            }
+         }
+         
+         // Set to NA for the rest
+         for(; ii < index.size(); ++ii) {
+            for(int col = 0; col < data.size(); ++col) {
+               data.get(col).set(ii, Double.NaN);
+            }
+         }
+      } else if(k > 0) {
+         int ii = size() - 1;
+         int jj = ii - k;
+         for(; jj >= 0; --ii, --jj) {
+            for(int col = 0; col < data.size(); ++col) {
+               data.get(col).set(ii, data.get(col).get(jj));
+            }
+         }
+         
+         // Set to NA for the rest
+         for(; ii >= 0; --ii) {
+            for(int col = 0; col < data.size(); ++col) {
+               data.get(col).set(ii, Double.NaN);
+            }
+         }
+      }
+
+      return this;
+   }
+   
+   /**
+    * @brief Shifts the series 1-period down.
+    * 
+    * NAs are appended to the series.
+    * 
+    * @return The lagged (shifted) time series.
+    */
+   public Series lag() {
+      return lag(1);
    }
 }
  
