@@ -17,14 +17,16 @@ package net.tradelib.core;
 import java.math.BigDecimal;
 import java.util.logging.Logger;
 
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+
 public class TradeSummaryBuilder {
    private long numTrades;
 
    private double grossProfits;
    private double grossLosses;
 
-   private AverageAndVariance dailyPnlStats;
-   private AverageAndVariance pnlStats;
+   private SummaryStatistics dailyPnlStats;
+   private SummaryStatistics pnlStats;
 
    private long nonZero;
    private long positive;
@@ -51,8 +53,8 @@ public class TradeSummaryBuilder {
       grossProfits = 0.0;
       grossLosses = 0.0;
       
-      dailyPnlStats = new AverageAndVariance();
-      pnlStats = new AverageAndVariance();
+      dailyPnlStats = new SummaryStatistics();
+      pnlStats = new SummaryStatistics();
       
       nonZero = 0; positive = 0; negative = 0;
       
@@ -87,7 +89,7 @@ public class TradeSummaryBuilder {
          grossProfits += ts.pnl;
       }
 
-      pnlStats.add(ts.pnl);
+      pnlStats.addValue(ts.pnl);
 
       maxWin = Math.max(maxWin, ts.pnl);
       maxLoss = Math.min(maxLoss, ts.pnl);
@@ -111,7 +113,7 @@ public class TradeSummaryBuilder {
          }
 
          if(pnl.get(pnlId) != 0.0) {
-            dailyPnlStats.add(pnl.get(pnlId));
+            dailyPnlStats.addValue(pnl.get(pnlId));
          }
 
          ++pnlId;
@@ -132,8 +134,8 @@ public class TradeSummaryBuilder {
             summary.profitFactor = Math.abs(grossProfits);
          }
 
-         summary.averageTradePnl = pnlStats.getAverage();
-         summary.tradePnlStdDev = pnlStats.getStdDev();
+         summary.averageTradePnl = pnlStats.getMax();
+         summary.tradePnlStdDev = pnlStats.getStandardDeviation();
          if(numTrades > 0) {
             summary.pctNegative = (double)negative/numTrades*100.0; 
             summary.pctPositive = (double)positive/numTrades*100.0; 
@@ -162,8 +164,11 @@ public class TradeSummaryBuilder {
             summary.maxDDPct = Double.MAX_VALUE;
          }
 
-         summary.averageDailyPnl = dailyPnlStats.getAverage();
-         summary.dailyPnlStdDev = dailyPnlStats.getStdDev();
+         summary.averageDailyPnl = dailyPnlStats.getMean();
+         summary.dailyPnlStdDev = dailyPnlStats.getStandardDeviation();
+         if(summary.dailyPnlStdDev == 0) {
+            summary.dailyPnlStdDev = 1e-10;
+         }
          summary.sharpeRatio = Functions.sharpeRatio(summary.averageDailyPnl, summary.dailyPnlStdDev, 252); 
       }
       
