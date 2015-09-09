@@ -1268,7 +1268,7 @@ public abstract class Strategy implements IBrokerListener {
          for(; jj >= 0 && equity.getTimestamp(jj).getYear() == equity.getTimestamp(ii).getYear(); --jj) {
          }
          
-         if(equity.getTimestamp(jj).getYear() != equity.getTimestamp(ii).getYear()) {
+         if(jj >= 0 && equity.getTimestamp(jj).getYear() != equity.getTimestamp(ii).getYear()) {
             ++jj;
             maxDateTime = equity.getTimestamp(jj);
             maxEndEq = equity.get(jj);
@@ -1297,10 +1297,17 @@ public abstract class Strategy implements IBrokerListener {
       }
       
       TradeSummary summary = getSummary("TOTAL", "All");
-      result.addProperty("avg_trade_pnl", Math.round(summary.averageTradePnl));
-      result.addProperty("maxdd", Math.round(maxDD));
-      result.addProperty("maxdd_pct", maxDDPct*100);
-      result.addProperty("num_trades", summary.numTrades);
+      if(summary != null) {
+         result.addProperty("avg_trade_pnl", Math.round(summary.averageTradePnl));
+         result.addProperty("maxdd", Math.round(maxDD));
+         result.addProperty("maxdd_pct", maxDDPct*100);
+         result.addProperty("num_trades", summary.numTrades);
+      } else {
+         result.addProperty("avg_trade_pnl", 0);
+         result.addProperty("maxdd", 0);
+         result.addProperty("maxdd_pct", 0);
+         result.addProperty("num_trades", 0);
+      }
       
       Gson gson = new GsonBuilder()
                         .setPrettyPrinting()
