@@ -266,6 +266,10 @@ public class MySQLDataFeed extends HistoricalDataFeed {
             result = Instrument.makeForex(symbol, rs.getBigDecimal(2), comment.substring(3));
             result.setName(comment);
             break;
+         case "CASH":
+         case "IND":
+            result = Instrument.makeIndex(symbol);
+            break;
          }
       }
       

@@ -144,6 +144,12 @@ INSERT INTO instrument VALUES(161,'csi','EU9','FX',1.0,0.0001,0.0001,'EURUSD','C
 INSERT INTO instrument VALUES(162,'csi','QF4','FX',1.0,0.0001,0.0001,'GBPUSD','CASH',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 INSERT INTO instrument VALUES(163,'csi','QE2','FX',1.0,0.0001,0.0001,'USDCAD','CASH',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 INSERT INTO instrument VALUES(164,'csi','QE9','FX',1.0,0.01,0.01,'USDJPY','CASH',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO instrument VALUES(170,'csi','SPX','IND',1.0,0.01,0.01,'S&P 500','CME',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO instrument VALUES(171,'csi','DJI','IND',1.0,0.01,0.01,'Dow Jones Industrial','CBOT',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO instrument VALUES(172,'csi','CL.CASH','CASH',1.0,0.01,0.01,'Crude Oil Cash','NYMEX',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO instrument VALUES(173,'csi','DX.IND','IND',1.0,0.01,0.01,'US Dollar Index','FINEX',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO instrument VALUES(174,'csi','GC.CASH','CASH',1.0,0.01,0.01,'Gold Cash','COMEX',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO instrument VALUES(175,'csi','TY.CASH','CASH',1.0,0.01,0.01,'10-Year US T-Note Cash','CBOT',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 
 INSERT INTO instrument_variation VALUES(1,'ib','EUR','pinnacle','FN',100.0,0.0001);
 INSERT INTO instrument_variation VALUES(2,'ib','KE','pinnacle','KW',1.0,0.25);
@@ -301,6 +307,15 @@ CREATE TABLE IF NOT EXISTS csi_bars (
    closing_bid DECIMAL(18,8),
    closing_ask DECIMAL(18,8),
    UNIQUE INDEX cb_unique (symbol,ts))
+ENGINE = InnoDB;
+
+DROP TABLE IF EXISTS symbol_mappings;
+CREATE TABLE IF NOT EXISTS symbol_mappings (
+	id INTEGER PRIMARY KEY NOT NULL AUTO_INCREMENT,
+   portfolio VARCHAR(32) NOT NULL,
+   symbol VARCHAR(32) NOT NULL,
+   mapping VARCHAR(32) NOT NULL,
+   UNIQUE INDEX symbol_mappings_unique (portfolio,symbol))
 ENGINE = InnoDB;
 
 DROP TABLE IF EXISTS kv;
@@ -495,6 +510,13 @@ INSERT INTO instrument_exchange VALUES (104,'EMD','GLOBEX');
 INSERT INTO instrument_exchange VALUES (105,'YM','ECBOT');
 INSERT INTO instrument_exchange VALUES (106,'NKD','GLOBEX');
 
+INSERT INTO symbol_mappings VALUES (1, 'cash', 'CL2', 'CL.CASH');
+INSERT INTO symbol_mappings VALUES (2, 'cash', 'DX2', 'DX.IND');
+INSERT INTO symbol_mappings VALUES (3, 'cash', 'ES', 'SPX');
+INSERT INTO symbol_mappings VALUES (4, 'cash', 'GC2', 'GC.CASH');
+INSERT INTO symbol_mappings VALUES (5, 'cash', 'TY', 'TY.CASH');
+INSERT INTO symbol_mappings VALUES (6, 'cash', 'YM', 'DJI');
+
 DROP USER 'qboss'@'localhost';
 CREATE USER 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON holidays TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
@@ -510,3 +532,4 @@ GRANT DELETE,INSERT,SELECT,UPDATE ON kv_bin TO 'qboss'@'localhost' IDENTIFIED BY
 GRANT DELETE,INSERT,SELECT,UPDATE ON categories TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON instrument_visiable TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
 GRANT DELETE,INSERT,SELECT,UPDATE ON instrument_exchange TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';
+GRANT DELETE,INSERT,SELECT,UPDATE ON symbol_mappings TO 'qboss'@'localhost' IDENTIFIED BY 'iddqd';

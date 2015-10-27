@@ -14,7 +14,6 @@
 
 package net.tradelib.core;
 
-import java.math.BigDecimal;
 import java.util.logging.Logger;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
