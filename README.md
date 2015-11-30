@@ -20,10 +20,10 @@ The code is Java (Java 8 or higher), thus, it should work pretty much everywhere
 ## Wiki
 For more information go to the [project wiki page](https://github.com/ivannp/tradelib/wiki).
 
-## Challange
+## Challenge
 Tradelib is a framework, it is not straightforward to use. Currently there
 aren't any examples. I have implemented a lot of strategies on top of it,
 but, I am unwilling (and, frankly, lazy) to open source any of them. Hence,
-a challange for you: if you have a strategy which you don't mind sharing,
+a challenge for you: if you have a strategy which you don't mind sharing,
 and it is relatively straightforward,
 I may be willing to implement it in Tradelib and to use it as an example.
