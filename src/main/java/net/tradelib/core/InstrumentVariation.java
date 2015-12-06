@@ -34,6 +34,8 @@ public class InstrumentVariation {
    public double tickCeil(double value) { return Math.ceil(value/getTick())*getTick(); }
    public double tickFloor(double value) { return Math.floor(value/getTick())*getTick(); }
    public double price(double originalPrice) { return originalPrice/factor; }
+   public double priceTickCeil(double value) { return Math.ceil(price(value)/getTick())*getTick(); }
+   public double priceTickFloor(double value) { return Math.floor(price(value)/getTick())*getTick(); }
    
    public Order transform(Order oo) {
       Order result = oo.clone();

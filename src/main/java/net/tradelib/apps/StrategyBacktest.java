@@ -113,12 +113,20 @@ public class StrategyBacktest {
       
       JsonArray asa = report.getAsJsonArray("annual_stats");
       
+      String csvPath = BacktestCfg.instance().getProperty("positions.csv.prefix");
+      if(csvPath != null && csvPath.length() > 0)
+      {
+         csvPath += "-" + strategy.getLastTimestamp().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
+      }
+      
       // If emails are being send out
       String signalText = StrategyText.build(
                context.dbUrl,
                strategy.getName(),
                strategy.getLastTimestamp().toLocalDate(),
-               "   ");
+               "   ",
+               csvPath,
+               '|');
       
       System.out.println(signalText);
       System.out.println();

@@ -375,7 +375,7 @@ public abstract class Strategy implements IBrokerListener {
    }
    
    private void setDoubleParam(PreparedStatement stmt, int index, double value) throws SQLException {
-      if(!Double.isNaN(value)) {
+      if(Double.isFinite(value)) {
          stmt.setDouble(index, value);
       } else {
          stmt.setNull(index, Types.DOUBLE);
