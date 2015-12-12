@@ -64,6 +64,21 @@ public class StrategyText {
       return text;
    }
    
+   private static final String STRATEGY_QUERY = 
+         " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as symbol, " +
+         "     spos.position as position, date_format(spos.ts, '%Y-%m-%d') as date, spos.last_close as close, " +
+         "     spos.last_ts as close_date, " +
+         "     spos.details AS details, date_format(i.current_contract,'%b\\'%y') as current_contract, " +
+         "     date_format(i.next_contract,'%b\\'%y') as next_contract, i.trading_days as days " +
+         " from strategy_positions spos " +
+         " inner join strategies s on s.id = spos.strategy_id " +
+         " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
+         " left join instrument_variation ivar on spos.symbol = ivar.original_symbol and ivar.original_provider = 'csi' " +
+         " left join instrument_visiable iv on iv.instrument_id = i.id " +
+         " left join categories c on iv.categories_id = c.id " +
+         " WHERE s.name = ? AND DATE(spos.last_ts) = DATE(?) " +
+         " ORDER BY cid, iv.ord"; 
+   
    public static List<InstrumentText> buildList(Connection con, String strategy, LocalDate date, String csvPath, char csvSep) throws Exception {
    // public static List<InstrumentText> buildList(Connection con, String strategy, LocalDate date) throws Exception {
       ArrayList<InstrumentText> result = new ArrayList<InstrumentText>();
@@ -77,24 +92,8 @@ public class StrategyText {
       
       int numCsvColumns = 12;
       
-      String query;
-      
-      query = " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as symbol, " +
-            "     spos.position as position, date_format(spos.ts, '%Y-%m-%d') as date, spos.last_close as close, " +
-            "     spos.last_ts as close_date, " +
-            "     spos.details AS details, date_format(i.current_contract,'%b\\'%y') as current_contract, " +
-            "     date_format(i.next_contract,'%b\\'%y') as next_contract, i.trading_days as days " +
-            " from strategy_positions spos " +
-            " inner join strategies s on s.id = spos.strategy_id " +
-            " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
-            " left join instrument_variation ivar on spos.symbol = ivar.original_symbol and ivar.original_provider = 'csi' " +
-            " left join instrument_visiable iv on iv.instrument_id = i.id " +
-            " left join categories c on iv.categories_id = c.id " +
-            " WHERE s.name = ? AND DATE(spos.last_ts) = DATE(?) " +
-            " ORDER BY cid, iv.ord";
-      
       String prevCategory = "";
-      PreparedStatement pstmt = con.prepareStatement(query);
+      PreparedStatement pstmt = con.prepareStatement(STRATEGY_QUERY);
       pstmt.setString(1, strategy);
       pstmt.setTimestamp(2, Timestamp.valueOf(date.atStartOfDay()));
       ResultSet rs = pstmt.executeQuery();
@@ -377,6 +376,327 @@ public class StrategyText {
       if(printer != null) printer.flush();
       
       return result;
+   }
+   
+   private static final String STRATEGY_ORDER_QUERY = 
+         " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as symbol, " +
+         "     spos.position as position, date_format(spos.ts, '%Y-%m-%d') as date, spos.last_close as close, " +
+         "     spos.last_ts as close_date, " +
+         "     spos.details AS details, date_format(i.current_contract,'%Y%m%d') as current_contract, " +
+         "     date_format(i.next_contract,'%Y%m%d') as next_contract, i.trading_days as days, " +
+         "     i.exchange as exchange, i.type as type " +
+         " from strategy_positions spos " +
+         " inner join strategies s on s.id = spos.strategy_id " +
+         " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
+         " left join instrument_variation ivar on spos.symbol = ivar.original_symbol and ivar.original_provider = 'csi' " +
+         " left join instrument_visiable iv on iv.instrument_id = i.id " +
+         " left join categories c on iv.categories_id = c.id " +
+         " WHERE s.name = ? AND DATE(spos.last_ts) = DATE(?) " +
+         " ORDER BY cid, iv.ord";
+   
+   private static final String[] CSV_HEADER =
+      {
+            "Action",
+            "Quantity",
+            "Symbol",
+            "SecType",
+            "LastTradingDayOrContractMonth",
+            "Exchange",
+            "OrderType",
+            "LmtPrice",
+            "AuxPrice"
+      };
+   
+   public static void buildOrdersCsv(String dbUrl, String strategy, LocalDate date, String csvPath) throws Exception {
+      Connection con = DriverManager.getConnection(dbUrl);
+            
+      CSVPrinter printer = null;
+      if(csvPath != null)
+      {
+         // Add withHeader for headers
+         printer = CSVFormat.DEFAULT.withDelimiter(',').withHeader(CSV_HEADER).print(new BufferedWriter(new FileWriter(csvPath)));
+      }
+      
+      PreparedStatement pstmt = con.prepareStatement(STRATEGY_ORDER_QUERY);
+      pstmt.setString(1, strategy);
+      pstmt.setTimestamp(2, Timestamp.valueOf(date.atStartOfDay()));
+      ResultSet rs = pstmt.executeQuery();
+      while(rs.next()) {
+         JsonObject jo = new Gson().fromJson(rs.getString(9), JsonObject.class);
+         JsonArray ja = jo.get("orders").getAsJsonArray();
+         
+         for(int ii = 0; ii < ja.size(); ++ii) {
+            JsonObject jorder = ja.get(ii).getAsJsonObject();
+            
+            switch(jorder.get("type").getAsString()) {
+            case "EXIT_LONG_STOP":
+               // Action
+               printer.print("SELL");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+               
+            case "EXIT_SHORT_STOP":
+               // Action
+               printer.print("BUY");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+               
+            case "ENTER_LONG":
+               // Action
+               printer.print("BUY");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("MKT");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print("");
+               printer.println();
+               break;
+               
+            case "ENTER_SHORT":
+               // Action
+               printer.print("SELL");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("MKT");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print("");
+               printer.println();
+               break;
+               
+            case "ENTER_LONG_STOP":
+               // Action
+               printer.print("BUY");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+               
+            case "ENTER_LONG_STOP_LIMIT":
+               // Action
+               printer.print("BUY");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP LMT");
+               // LmtPrice
+               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+               
+            case "ENTER_SHORT_STOP":
+               // Action
+               printer.print("SELL");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+
+            case "ENTER_SHORT_STOP_LIMIT":
+               // Action
+               printer.print("SELL");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP LMT");
+               // LmtPrice
+               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+
+            case "EXIT_LONG":
+               // Action
+               printer.print("SELL");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("MKT");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print("");
+               printer.println();
+               break;
+
+            case "EXIT_SHORT":
+               // Action
+               printer.print("BUY");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("MKT");
+               // LmtPrice
+               printer.print("");
+               // AuxPrice
+               printer.print("");
+               printer.println();
+               break;
+               
+            case "EXIT_SHORT_STOP_LIMIT":
+               // Action
+               printer.print("BUY");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP LMT");
+               // LmtPrice
+               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+               
+            case "EXIT_LONG_STOP_LIMIT":
+               // Action
+               printer.print("SELL");
+               // Quantity
+               printer.print(jorder.get("quantity").getAsLong());
+               // Symbol
+               printer.print(rs.getString(4));
+               // SecType
+               printer.print(rs.getString(14));
+               // LastTradingDayOrContractMonth
+               printer.print(rs.getString(11));
+               // Exchange
+               printer.print(rs.getString(13));
+               // OrderType
+               printer.print("STP LMT");
+               // LmtPrice
+               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               // AuxPrice
+               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.println();
+               break;
+            }
+         }
+         
+         if(printer != null) printer.flush();
+      }
    }
    
    static private String formatBigDecimal(BigDecimal bd, int minPrecision, int maxPrecision) {

@@ -44,6 +44,7 @@ import net.tradelib.core.TimeSeries;
 import net.tradelib.core.TradeSummary;
 import net.tradelib.misc.StrategyText;
 
+import com.google.common.base.Strings;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
@@ -114,9 +115,13 @@ public class StrategyBacktest {
       JsonArray asa = report.getAsJsonArray("annual_stats");
       
       String csvPath = BacktestCfg.instance().getProperty("positions.csv.prefix");
-      if(csvPath != null && csvPath.length() > 0)
-      {
+      if(!Strings.isNullOrEmpty(csvPath)) {
          csvPath += "-" + strategy.getLastTimestamp().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
+      }
+      
+      String ordersCsvPath = BacktestCfg.instance().getProperty("orders.csv.prefix");
+      if(!Strings.isNullOrEmpty(ordersCsvPath)) {
+         ordersCsvPath += "-" + strategy.getLastTimestamp().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
       }
       
       // If emails are being send out
@@ -130,6 +135,10 @@ public class StrategyBacktest {
       
       System.out.println(signalText);
       System.out.println();
+      
+      if(!Strings.isNullOrEmpty(ordersCsvPath)) {
+         StrategyText.buildOrdersCsv(context.dbUrl, strategy.getName(), strategy.getLastTimestamp().toLocalDate(), ordersCsvPath);
+      }
       
       String message = "";
       
