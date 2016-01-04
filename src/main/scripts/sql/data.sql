@@ -510,6 +510,13 @@ INSERT INTO instrument_exchange VALUES (104,'EMD','GLOBEX');
 INSERT INTO instrument_exchange VALUES (105,'YM','ECBOT');
 INSERT INTO instrument_exchange VALUES (106,'NKD','GLOBEX');
 
+INSERT INTO instrument_exchange VALUES (111,'KC','NYBOT');
+INSERT INTO instrument_exchange VALUES (112,'CT','NYBOT');
+INSERT INTO instrument_exchange VALUES (113,'CC','NYBOT');
+INSERT INTO instrument_exchange VALUES (114,'OJ','NYBOT');
+INSERT INTO instrument_exchange VALUES (115,'SB','NYBOT');
+INSERT INTO instrument_exchange VALUES (116,'LB','GLOBEX');
+
 INSERT INTO symbol_mappings VALUES (1, 'cash', 'CL2', 'CL.CASH');
 INSERT INTO symbol_mappings VALUES (2, 'cash', 'DX2', 'DX.IND');
 INSERT INTO symbol_mappings VALUES (3, 'cash', 'ES', 'SPX');

@@ -379,18 +379,19 @@ public class StrategyText {
    }
    
    private static final String STRATEGY_ORDER_QUERY = 
-         " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as symbol, " +
+         " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as actual_symbol, " +
          "     spos.position as position, date_format(spos.ts, '%Y-%m-%d') as date, spos.last_close as close, " +
          "     spos.last_ts as close_date, " +
-         "     spos.details AS details, date_format(i.current_contract,'%Y%m%d') as current_contract, " +
-         "     date_format(i.next_contract,'%Y%m%d') as next_contract, i.trading_days as days, " +
-         "     i.exchange as exchange, i.type as type " +
+         "     spos.details AS details, date_format(i.current_contract,'%Y%m') as current_contract, " +
+         "     date_format(i.next_contract,'%Y%m') as next_contract, i.trading_days as days, " +
+         "     ie.exchange as exchange, i.type as type " +
          " from strategy_positions spos " +
          " inner join strategies s on s.id = spos.strategy_id " +
          " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
          " left join instrument_variation ivar on spos.symbol = ivar.original_symbol and ivar.original_provider = 'csi' " +
          " left join instrument_visiable iv on iv.instrument_id = i.id " +
          " left join categories c on iv.categories_id = c.id " +
+         " left join instrument_exchange ie on coalesce(ivar.symbol, spos.symbol) = ie.symbol " +
          " WHERE s.name = ? AND DATE(spos.last_ts) = DATE(?) " +
          " ORDER BY cid, iv.ord";
    
@@ -425,6 +426,14 @@ public class StrategyText {
          JsonObject jo = new Gson().fromJson(rs.getString(9), JsonObject.class);
          JsonArray ja = jo.get("orders").getAsJsonArray();
          
+         int ndays = rs.getInt(12);
+         String contract;
+         if(ndays > 1) {
+            contract = rs.getString(10);
+         } else {
+            contract = rs.getString(11);
+         }
+         
          for(int ii = 0; ii < ja.size(); ++ii) {
             JsonObject jorder = ja.get(ii).getAsJsonObject();
             
@@ -439,7 +448,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -461,7 +470,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -483,7 +492,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -505,7 +514,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -527,7 +536,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -549,7 +558,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -571,7 +580,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -593,7 +602,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -615,7 +624,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -637,7 +646,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -659,7 +668,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
@@ -681,7 +690,7 @@ public class StrategyText {
                // SecType
                printer.print(rs.getString(14));
                // LastTradingDayOrContractMonth
-               printer.print(rs.getString(11));
+               printer.print(contract);
                // Exchange
                printer.print(rs.getString(13));
                // OrderType
