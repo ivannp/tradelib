@@ -19,6 +19,7 @@
       <open.csv.version>3.3</open.csv.version>
       <javax.mail.version>1.5.3</javax.mail.version>
       <javax.activation.version>1.1.1</javax.activation.version>
+      <jsch.version>0.1.53</jsch.version>
    </properties>
 
    <dependencies>
@@ -70,6 +71,18 @@
          <groupId>javax.activation</groupId>
          <artifactId>activation</artifactId>
          <version>${javax.activation.version}</version>
+      </dependency>
+      
+      <dependency>
+         <groupId>com.jcraft</groupId>
+         <artifactId>jsch</artifactId>
+         <version>${jsch.version}</version>
+      </dependency>
+      
+      <dependency>
+         <groupId>commons-io</groupId>
+         <artifactId>commons-io</artifactId>
+         <version>2.4</version>
       </dependency>
       
    </dependencies>

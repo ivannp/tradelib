@@ -14,9 +14,11 @@
 
 package net.tradelib.apps;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.logging.ConsoleHandler;
@@ -33,6 +35,8 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMessage.RecipientType;
 
+import org.apache.commons.io.FileUtils;
+
 import net.tradelib.core.Average;
 import net.tradelib.core.Context;
 import net.tradelib.core.HistoricalDataFeed;
@@ -42,6 +46,7 @@ import net.tradelib.core.Series;
 import net.tradelib.core.Strategy;
 import net.tradelib.core.TimeSeries;
 import net.tradelib.core.TradeSummary;
+import net.tradelib.misc.SftpUploader;
 import net.tradelib.misc.StrategyText;
 
 import com.google.common.base.Strings;
@@ -119,9 +124,16 @@ public class StrategyBacktest {
          csvPath += "-" + strategy.getLastTimestamp().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
       }
       
-      String ordersCsvPath = BacktestCfg.instance().getProperty("orders.csv.prefix");
+      String ordersCsvPath = BacktestCfg.instance().getProperty("orders.csv.suffix");
       if(!Strings.isNullOrEmpty(ordersCsvPath)) {
-         ordersCsvPath += "-" + strategy.getLastTimestamp().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
+         ordersCsvPath = strategy.getLastTimestamp().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE)
+               + "-" + strategy.getName() + ordersCsvPath;
+      }
+      
+      String actionsPath = BacktestCfg.instance().getProperty("actions.file.suffix");
+      if(!Strings.isNullOrEmpty(actionsPath)) {
+         actionsPath = strategy.getLastTimestamp().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE)
+               + "-" + strategy.getName() + actionsPath;
       }
       
       // If emails are being send out
@@ -138,6 +150,12 @@ public class StrategyBacktest {
       
       if(!Strings.isNullOrEmpty(ordersCsvPath)) {
          StrategyText.buildOrdersCsv(context.dbUrl, strategy.getName(), strategy.getLastTimestamp().toLocalDate(), ordersCsvPath);
+      }
+      
+      File actionsFile = Strings.isNullOrEmpty(actionsPath) ? null : new File(actionsPath);
+      
+      if(actionsFile != null) {
+         FileUtils.writeStringToFile(actionsFile, signalText + System.getProperty("line.separator") + System.getProperty("line.separator"));
       }
       
       String message = "";
@@ -215,6 +233,10 @@ public class StrategyBacktest {
       
       System.out.println(message);
       
+      if(actionsFile != null) {
+         FileUtils.writeStringToFile(actionsFile, message + System.getProperty("line.separator"), true);
+      }
+      
       if(Boolean.parseBoolean(BacktestCfg.instance().getProperty("email.enabled", "false"))) {
          Properties props = new Properties();
          props.put("mail.smtp.auth", "true");
@@ -243,6 +265,17 @@ public class StrategyBacktest {
          } catch (Exception ee) {
             Logger.getLogger("").warning(ee.getMessage());
          }
+      }
+      
+      if(Boolean.parseBoolean(BacktestCfg.instance().getProperty("sftp.enabled", "false"))) {
+         HashMap<String,String> fileMap = new HashMap<String,String>();
+         if(!Strings.isNullOrEmpty(actionsPath)) fileMap.put(actionsPath, actionsPath);
+         if(!Strings.isNullOrEmpty(ordersCsvPath)) fileMap.put(ordersCsvPath, ordersCsvPath);
+         String user = BacktestCfg.instance().getProperty("sftp.user");
+         String pass = BacktestCfg.instance().getProperty("sftp.pass");
+         String host = BacktestCfg.instance().getProperty("sftp.host");
+         SftpUploader sftp = new SftpUploader(host, user, pass);
+         sftp.upload(fileMap);
       }
    }
    
