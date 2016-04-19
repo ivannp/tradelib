@@ -14,7 +14,6 @@
 
 package net.tradelib.misc;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.math.BigDecimal;
@@ -69,7 +68,8 @@ public class StrategyText {
          "     spos.position as position, date_format(spos.ts, '%Y-%m-%d') as date, spos.last_close as close, " +
          "     spos.last_ts as close_date, " +
          "     spos.details AS details, date_format(i.current_contract,'%b\\'%y') as current_contract, " +
-         "     date_format(i.next_contract,'%b\\'%y') as next_contract, i.trading_days as days " +
+         "     date_format(i.next_contract,'%b\\'%y') as next_contract, i.trading_days as days, " +
+         "     date_format(i.current_contract2,'%b\\'%y') as current_contract2, i.roll_today as roll_today " +
          " from strategy_positions spos " +
          " inner join strategies s on s.id = spos.strategy_id " +
          " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
@@ -92,6 +92,8 @@ public class StrategyText {
       
       int numCsvColumns = 12;
       
+      int rollMethod = 2;
+      
       String prevCategory = "";
       PreparedStatement pstmt = con.prepareStatement(STRATEGY_QUERY);
       pstmt.setString(1, strategy);
@@ -113,12 +115,23 @@ public class StrategyText {
          }
          String name = rs.getString(3);
          String symbol = rs.getString(4);
-         int ndays = rs.getInt(12);
-         String contract;
-         if(ndays > 1) {
-            contract = rs.getString(10);
-         } else {
-            contract = "Roll to " + rs.getString(11);
+         String contract = "";
+         if(rollMethod == 1) {
+            // Uses current_contract and trading_days
+            int ndays = rs.getInt(12);
+            if(ndays > 1) {
+               contract = rs.getString(10);
+            } else {
+               contract = "Roll to " + rs.getString(11);
+            }
+         } else if(rollMethod == 2) {
+            // Uses current_contract2 and roll_today
+            int rollToday = rs.getInt(14);
+            if(rollToday > 0) {
+               contract = rs.getString(13);
+            } else {
+               contract = "Roll to " + rs.getString(13);
+            }
          }
          
          if(printer != null) {
@@ -384,7 +397,8 @@ public class StrategyText {
          "     spos.last_ts as close_date, " +
          "     spos.details AS details, date_format(i.current_contract,'%Y%m') as current_contract, " +
          "     date_format(i.next_contract,'%Y%m') as next_contract, i.trading_days as days, " +
-         "     ie.exchange as exchange, i.type as type " +
+         "     ie.exchange as exchange, i.type as type, " +
+         "     date_format(i.current_contract2,'%b\\'%y') as current_contract2, i.roll_today as roll_today " +
          " from strategy_positions spos " +
          " inner join strategies s on s.id = spos.strategy_id " +
          " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
@@ -418,6 +432,8 @@ public class StrategyText {
          printer = CSVFormat.DEFAULT.withDelimiter(',').withHeader(CSV_HEADER).print(new BufferedWriter(new FileWriter(csvPath)));
       }
       
+      int rollMethod = 2;
+      
       PreparedStatement pstmt = con.prepareStatement(STRATEGY_ORDER_QUERY);
       pstmt.setString(1, strategy);
       pstmt.setTimestamp(2, Timestamp.valueOf(date.atStartOfDay()));
@@ -427,11 +443,15 @@ public class StrategyText {
          JsonArray ja = jo.get("orders").getAsJsonArray();
          
          int ndays = rs.getInt(12);
-         String contract;
-         if(ndays > 1) {
-            contract = rs.getString(10);
-         } else {
-            contract = rs.getString(11);
+         String contract = "";
+         if(rollMethod == 1) {
+            if(ndays > 1) {
+               contract = rs.getString(10);
+            } else {
+               contract = rs.getString(11);
+            }
+         } else if(rollMethod == 2) {
+            contract = rs.getString(15);
          }
          
          for(int ii = 0; ii < ja.size(); ++ii) {
