@@ -127,7 +127,7 @@ public class StrategyText {
          } else if(rollMethod == 2) {
             // Uses current_contract2 and roll_today
             int rollToday = rs.getInt(14);
-            if(rollToday > 0) {
+            if(rollToday == 0) {
                contract = rs.getString(13);
             } else {
                contract = "Roll to " + rs.getString(13);

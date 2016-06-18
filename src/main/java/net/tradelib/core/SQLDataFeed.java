@@ -34,7 +34,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
-public class MySQLDataFeed extends HistoricalDataFeed {
+public class SQLDataFeed extends HistoricalDataFeed {
    
    private Properties config;
    
@@ -92,11 +92,11 @@ public class MySQLDataFeed extends HistoricalDataFeed {
       defaultInstrument = s;
    }
    
-   public MySQLDataFeed() {
+   public SQLDataFeed() {
       newInstrumentCache();
    }
    
-   public MySQLDataFeed(Context context) {
+   public SQLDataFeed(Context context) {
       super(context);
       newInstrumentCache();
    }

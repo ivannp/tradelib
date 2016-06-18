@@ -41,7 +41,7 @@ import net.tradelib.core.Average;
 import net.tradelib.core.Context;
 import net.tradelib.core.HistoricalDataFeed;
 import net.tradelib.core.HistoricalReplay;
-import net.tradelib.core.MySQLDataFeed;
+import net.tradelib.core.SQLDataFeed;
 import net.tradelib.core.Series;
 import net.tradelib.core.Strategy;
 import net.tradelib.core.TimeSeries;
@@ -86,7 +86,7 @@ public class StrategyBacktest {
       Context context = new Context();
       context.dbUrl = BacktestCfg.instance().getProperty("db.url");
       
-      HistoricalDataFeed hdf = new MySQLDataFeed(context);
+      HistoricalDataFeed hdf = new SQLDataFeed(context);
       hdf.configure(BacktestCfg.instance().getProperty("datafeed.config", "config/datafeed.properties"));
       context.historicalDataFeed = hdf;
       
