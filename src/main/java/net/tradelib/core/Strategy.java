@@ -246,15 +246,13 @@ public abstract class Strategy implements IBrokerListener {
       long start = System.nanoTime();
       
       // Write the PnL
-      String query = " INSERT INTO pnls(strategy_id,symbol,ts,pnl) VALUE (?,?,?,?) " +
-                     " ON DUPLICATE KEY UPDATE pnl=?";
+      String query = " REPLACE INTO pnls(strategy_id,symbol,ts,pnl) VALUES (?,?,?,?) ";
       PreparedStatement stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.setString(2, instrument.getSymbol());
       for(int ii = 0; ii < pnl.size(); ++ii) {
          stmt.setTimestamp(3, Timestamp.valueOf(pnl.getTimestamp(ii)));
          stmt.setDouble(4, pnl.get(ii));
-         stmt.setDouble(5, pnl.get(ii));
          stmt.addBatch();
       }
       stmt.executeBatch();
@@ -359,14 +357,12 @@ public abstract class Strategy implements IBrokerListener {
       // Accumulate using the last value for each day (the end equity)
       Series eq = getAccount().getEquity().toDaily((Double x, Double y) -> y);
       
-      String query = " INSERT INTO end_equity(strategy_id,ts,equity) VALUE (?,?,?) " +
-                     " ON DUPLICATE KEY UPDATE equity=?";
+      String query = " REPLACE INTO end_equity(strategy_id,ts,equity) VALUES (?,?,?) ";
       PreparedStatement stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       for(int ii = 0; ii < eq.size(); ++ii) {
          stmt.setTimestamp(2, Timestamp.valueOf(eq.getTimestamp(ii)));
          stmt.setDouble(3, eq.get(ii));
-         stmt.setDouble(4, eq.get(ii));
          stmt.addBatch();
       }
       stmt.executeBatch();
@@ -1092,28 +1088,22 @@ public abstract class Strategy implements IBrokerListener {
                            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                            .create();
          
-         String query = " INSERT INTO strategy_positions " +
+         String query = " REPLACE INTO strategy_positions " +
                " (strategy_id,symbol,ts,position,last_close,last_ts,details) " +
-               " VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE " +
-               " position=?,last_close=?,ts=?,details=?";
+               " VALUES(?,?,?,?,?,?,?) ";
          String jsonString = gson.toJson(jo);
          PreparedStatement stmt = con.prepareStatement(query);
          stmt.setLong(1, getStrategyId());
          stmt.setString(2, getSymbol());
          if(getDateTime().equals(LocalDateTime.MIN)) {
             stmt.setNull(3, Types.TIMESTAMP);
-            stmt.setNull(10, Types.TIMESTAMP);
          } else {
             stmt.setTimestamp(3, Timestamp.valueOf(getDateTime()));
-            stmt.setTimestamp(10, Timestamp.valueOf(getDateTime()));
          }
          stmt.setDouble(4, getPosition());
          stmt.setDouble(5, getLastClose());
          stmt.setTimestamp(6, Timestamp.valueOf(getLastDateTime()));
          stmt.setString(7, jsonString);
-         stmt.setDouble(8, getPosition());
-         stmt.setDouble(9, getLastClose());
-         stmt.setString(11, jsonString);
          
          stmt.executeUpdate();
          
@@ -1316,14 +1306,13 @@ public abstract class Strategy implements IBrokerListener {
 
       connectIfNecessary();
       
-      String query = " INSERT INTO strategy_report (strategy_id,last_date,report) " +
-                     " VALUES(?,?,?) ON DUPLICATE KEY UPDATE report=?";
+      String query = " REPLACE INTO strategy_report (strategy_id,last_date,report) " +
+                     " VALUES(?,?,?) ";
       PreparedStatement stmt = connection.prepareStatement(query);
       stmt.setLong(1, dbId);
       stmt.setTimestamp(2, Timestamp.valueOf(getLastTimestamp()));
       String jsonString = gson.toJson(result); 
       stmt.setString(3, jsonString);
-      stmt.setString(4, jsonString);
       stmt.executeUpdate();
       
       connection.commit();

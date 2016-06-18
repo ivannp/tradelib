@@ -37,7 +37,8 @@ import com.google.common.cache.LoadingCache;
 public class SQLDataFeed extends HistoricalDataFeed {
    
    private Properties config;
-   
+
+   private String dbFlavor;
    private String dbUrl;
    private String barsTable;
    private String instrumentsTable;
@@ -79,6 +80,14 @@ public class SQLDataFeed extends HistoricalDataFeed {
    public void setBarsTable(String barsTable) {
       this.barsTable = barsTable;
    }
+   
+   public void setDbFlavor(String dbFlavor) {
+      this.dbFlavor = dbFlavor;
+   }
+   
+   public String getDbFlavor() {
+      return dbFlavor;
+   }
 
    public void setDbUrl(String dbUrl) {
       this.dbUrl = dbUrl;
@@ -99,6 +108,10 @@ public class SQLDataFeed extends HistoricalDataFeed {
    public SQLDataFeed(Context context) {
       super(context);
       newInstrumentCache();
+   }
+   
+   public boolean isMySQL() {
+      return dbFlavor != null && dbFlavor.equals("MySQL");
    }
 
    /**
@@ -122,6 +135,7 @@ public class SQLDataFeed extends HistoricalDataFeed {
          }
       }
       
+      setDbFlavor(config.getProperty("db.flavor", "SQLite"));
       setDbUrl(config.getProperty("db.url"));
       setBarsTable(config.getProperty("bars.table"));
       setInstrumentsTable(config.getProperty("instruments.table"));
@@ -141,12 +155,23 @@ public class SQLDataFeed extends HistoricalDataFeed {
       
       Connection con = DriverManager.getConnection(getDbUrl());
       
-      String query = "SELECT symbol,ts,open,high,low,close,volume " +
-                     "FROM " + getBarsTable() + " " +
-                     "WHERE symbol IN (" + symbols + ") ";
-      if(getFeedStart() != null) query += " AND ts >= DATE(?)";
-      if(getFeedStop() != null) query += " AND ts <= DATE(?)";
-      query += " ORDER BY ts ASC";
+      String query;
+      if(isMySQL()) {
+         query = "SELECT symbol,ts,open,high,low,close,volume " +
+                 "FROM " + getBarsTable() + " " +
+                 "WHERE symbol IN (" + symbols + ") ";
+         if(getFeedStart() != null) query += " AND ts >= DATE(?)";
+         if(getFeedStop() != null) query += " AND ts <= DATE(?)";
+         query += " ORDER BY ts ASC";
+      } else {
+         // SQLite by default
+         query = "SELECT symbol,ts,open,high,low,close,volume " +
+               "FROM " + getBarsTable() + " " +
+               "WHERE symbol IN (" + symbols + ") ";
+         if(getFeedStart() != null) query += " AND ts >= ?";
+         if(getFeedStop() != null) query += " AND ts <= ?";
+         query += " ORDER BY ts ASC";
+      }
 
       PreparedStatement stmt = con.prepareStatement(query);
       int index = 1;

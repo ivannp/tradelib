@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -65,6 +66,22 @@ public class StrategyText {
    
    private static final String STRATEGY_QUERY = 
          " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as symbol, " +
+         "     spos.position as position, date(spos.ts/1000.0, 'unixepoch') as date, spos.last_close as close, " +
+         "     spos.last_ts as close_date, " +
+         "     spos.details AS details, strftime('%m''%Y',i.current_contract/1000.0,'unixepoch') as current_contract, " +
+         "     strftime('%m''%Y',i.next_contract/1000.0,'unixepoch') as next_contract, i.trading_days as days, " +
+         "     strftime('%m''%Y',i.current_contract2/1000.0,'unixepoch') as current_contract2, i.roll_today as roll_today " +
+         " from strategy_positions spos " +
+         " inner join strategies s on s.id = spos.strategy_id " +
+         " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
+         " left join instrument_variation ivar on spos.symbol = ivar.original_symbol and ivar.original_provider = 'csi' " +
+         " left join instrument_visiable iv on iv.instrument_id = i.id " +
+         " left join categories c on iv.categories_id = c.id " +
+         " WHERE s.name = ? AND strftime('%Y-%m-%d', spos.last_ts/1000.0, 'unixepoch') = strftime('%Y-%m-%d', ?/1000.0, 'unixepoch') " +
+         " ORDER BY cid, iv.ord"; 
+   
+   private static final String STRATEGY_QUERY_MYSQL = 
+         " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as symbol, " +
          "     spos.position as position, date_format(spos.ts, '%Y-%m-%d') as date, spos.last_close as close, " +
          "     spos.last_ts as close_date, " +
          "     spos.details AS details, date_format(i.current_contract,'%b\\'%y') as current_contract, " +
@@ -94,8 +111,17 @@ public class StrategyText {
       
       int rollMethod = 2;
       
+      DatabaseMetaData dmd = con.getMetaData();
+      String driverName = dmd.getDriverName();
+      String query = "";
+      if(driverName.startsWith("MySQL")) {
+         query = STRATEGY_QUERY_MYSQL;
+      } else {
+         query = STRATEGY_QUERY;
+      }
+      
       String prevCategory = "";
-      PreparedStatement pstmt = con.prepareStatement(STRATEGY_QUERY);
+      PreparedStatement pstmt = con.prepareStatement(query);
       pstmt.setString(1, strategy);
       pstmt.setTimestamp(2, Timestamp.valueOf(date.atStartOfDay()));
       ResultSet rs = pstmt.executeQuery();
@@ -393,6 +419,24 @@ public class StrategyText {
    
    private static final String STRATEGY_ORDER_QUERY = 
          " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as actual_symbol, " +
+         "     spos.position as position, strftime('%Y-%m-%d', spos.ts/1000.0, 'unixepoch') as date, spos.last_close as close, " +
+         "     spos.last_ts as close_date, " +
+         "     spos.details AS details, strftime('%Y%m',i.current_contract/1000.0,'unixepoch') as current_contract, " +
+         "     strftime('%Y%m',i.next_contract/1000.0,'unixepoch') as next_contract, i.trading_days as days, " +
+         "     ie.exchange as exchange, i.type as type, " +
+         "     strftime('%Y%m',i.current_contract2/1000.0,'unixepoch') as current_contract2, i.roll_today as roll_today " +
+         " from strategy_positions spos " +
+         " inner join strategies s on s.id = spos.strategy_id " +
+         " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
+         " left join instrument_variation ivar on spos.symbol = ivar.original_symbol and ivar.original_provider = 'csi' " +
+         " left join instrument_visiable iv on iv.instrument_id = i.id " +
+         " left join categories c on iv.categories_id = c.id " +
+         " left join instrument_exchange ie on coalesce(ivar.symbol, spos.symbol) = ie.symbol " +
+         " WHERE s.name = ? AND strftime('%Y-%m-%d', spos.last_ts/1000.0, 'unixepoch') = strftime('%Y-%m-%d', ?/1000.0, 'unixepoch') " +
+         " ORDER BY cid, iv.ord";
+   
+   private static final String STRATEGY_ORDER_QUERY_MYSQL = 
+         " select c.id as cid, c.name as cname, i.comment as name, coalesce(ivar.symbol, spos.symbol) as actual_symbol, " +
          "     spos.position as position, date_format(spos.ts, '%Y-%m-%d') as date, spos.last_close as close, " +
          "     spos.last_ts as close_date, " +
          "     spos.details AS details, date_format(i.current_contract,'%Y%m') as current_contract, " +
@@ -434,7 +478,16 @@ public class StrategyText {
       
       int rollMethod = 2;
       
-      PreparedStatement pstmt = con.prepareStatement(STRATEGY_ORDER_QUERY);
+      DatabaseMetaData dmd = con.getMetaData();
+      String driverName = dmd.getDriverName();
+      String query = "";
+      if(driverName.startsWith("MySQL")) {
+         query = STRATEGY_ORDER_QUERY_MYSQL;
+      } else {
+         query = STRATEGY_ORDER_QUERY;
+      }
+      
+      PreparedStatement pstmt = con.prepareStatement(query);
       pstmt.setString(1, strategy);
       pstmt.setTimestamp(2, Timestamp.valueOf(date.atStartOfDay()));
       ResultSet rs = pstmt.executeQuery();
