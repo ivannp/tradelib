@@ -442,7 +442,7 @@ public class StrategyText {
          "     spos.details AS details, date_format(i.current_contract,'%Y%m') as current_contract, " +
          "     date_format(i.next_contract,'%Y%m') as next_contract, i.trading_days as days, " +
          "     ie.exchange as exchange, i.type as type, " +
-         "     date_format(i.current_contract2,'%b\\'%y') as current_contract2, i.roll_today as roll_today " +
+         "     date_format(i.current_contract2,'%Y%m') as current_contract2, i.roll_today as roll_today " +
          " from strategy_positions spos " +
          " inner join strategies s on s.id = spos.strategy_id " +
          " inner join instrument i on i.symbol = spos.symbol and i.provider = 'csi' " +
@@ -529,7 +529,7 @@ public class StrategyText {
                // LmtPrice
                printer.print("");
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
                
@@ -551,7 +551,7 @@ public class StrategyText {
                // LmtPrice
                printer.print("");
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
                
@@ -617,7 +617,7 @@ public class StrategyText {
                // LmtPrice
                printer.print("");
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
                
@@ -637,9 +637,9 @@ public class StrategyText {
                // OrderType
                printer.print("STP LMT");
                // LmtPrice
-               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("limit_price").getAsBigDecimal()));
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
                
@@ -661,7 +661,7 @@ public class StrategyText {
                // LmtPrice
                printer.print("");
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
 
@@ -681,9 +681,9 @@ public class StrategyText {
                // OrderType
                printer.print("STP LMT");
                // LmtPrice
-               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("limit_price").getAsBigDecimal()));
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
 
@@ -747,9 +747,9 @@ public class StrategyText {
                // OrderType
                printer.print("STP LMT");
                // LmtPrice
-               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("limit_price").getAsBigDecimal()));
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
                
@@ -769,9 +769,9 @@ public class StrategyText {
                // OrderType
                printer.print("STP LMT");
                // LmtPrice
-               printer.print(jorder.get("limit_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("limit_price").getAsBigDecimal()));
                // AuxPrice
-               printer.print(jorder.get("stop_price").getAsBigDecimal());
+               printer.print(formatOrderPrice(jorder.get("stop_price").getAsBigDecimal()));
                printer.println();
                break;
             }
@@ -803,5 +803,11 @@ public class StrategyText {
    
    static private String formatPercentage(double dd) {
       return formatDouble(dd, 2, 2);
+   }
+   
+   static private String formatOrderPrice(BigDecimal bd) {
+      bd = bd.setScale(7, RoundingMode.HALF_UP).stripTrailingZeros();
+      int scale = bd.scale() <= 2 ? 2 : bd.scale();
+      return String.format("%." + Integer.toString(scale) + "f", bd);
    }
 }
