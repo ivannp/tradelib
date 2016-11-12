@@ -21,6 +21,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -142,7 +143,79 @@ public class SQLDataFeed extends HistoricalDataFeed {
       setInstrumentsVariationsTable(config.getProperty("instruments.variations.table"));
       setInstrumentProvider(config.getProperty("instrument.provider"));
    }
+   
+   class DateTimeReader {
+	   public int flavor = -1;
+	   
+	   LocalDateTime read(ResultSet rs, int colId) throws Exception {
+		   if(flavor < 0) {
+			   Timestamp tt;
+			   try {
+				   tt = rs.getTimestamp(colId); 
+			   } catch(Exception ee) {
+				   tt = null;
+			   }
+			   
+			   if(tt == null) {
+				   String ss;
+				   try {
+					   ss = rs.getString(colId);
+				   } catch(Exception ee) {
+					   ss = null;
+				   }
+				   
+				   if(ss != null) {
+					   LocalDateTime res;
+					   try {
+						   res = LocalDateTime.parse(ss);
+					   } catch(Exception ee) {
+						   res = null;
+					   }
+					   
+					   if(res != null) {
+						   flavor = 1;
+						   return res;
+					   }
+					   
+					   try {
+						   res = LocalDate.parse(ss, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
+					   } catch(Exception ee) {
+						   res = null;
+					   }
+					   
+					   if(res != null) {
+						   flavor = 2;
+						   return res;
+					   }
+				   }
+			   } else {
+				   LocalDateTime res;
+				   try {
+					   res = tt.toLocalDateTime();
+				   } catch(Exception ee) {
+					   res = null;
+				   }
+				   
+				   if(res != null) {
+					   flavor = 0;
+					   return res;
+				   }
+			   }
+		   } else {
+			   switch(flavor) {
+			   case 0: return rs.getTimestamp(colId).toLocalDateTime();
+			   case 1: return LocalDateTime.parse(rs.getString(colId));
+			   case 2: return LocalDate.parse(rs.getString(colId), DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
+			   }
+			   
+			   throw new DateTimeException(String.format("Failed to parse the date-time column [id = {0}].", colId));
+		   }
 
+		   // Give up
+		   throw new DateTimeException(String.format("Failed to parse the date-time column [id = {0}].", colId));
+	   }
+   }
+   
    @Override
    public void start() throws Exception {
       if(subscriptions.size() == 0) return;
@@ -184,6 +257,8 @@ public class SQLDataFeed extends HistoricalDataFeed {
       ArrayDeque<Bar> queue = new ArrayDeque<Bar>();
       HashMap<String, Integer> counters = new HashMap<String, Integer>();
       
+      int tsformat = -1;
+      
       while(true) {
          while(moreRecords) {
             // No reason to read a record if the queue head has a record with
@@ -197,9 +272,11 @@ public class SQLDataFeed extends HistoricalDataFeed {
             }
 
             if(!readRecord) break;
+            
+            DateTimeReader dtr = new DateTimeReader();
 
             // Read a bar, add it to the queue and to the counting hash.
-            Bar bar = new Bar(rs.getString(1), rs.getTimestamp(2).toLocalDateTime(),
+            Bar bar = new Bar(rs.getString(1), dtr.read(rs, 2),
                               rs.getBigDecimal(3).doubleValue(),
                               rs.getBigDecimal(4).doubleValue(),
                               rs.getBigDecimal(5).doubleValue(),
