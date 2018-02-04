@@ -302,39 +302,42 @@ CREATE TABLE IF NOT EXISTS csi_bars (
 	high DECIMAL(18,8) NOT NULL,
 	low DECIMAL(18,8) NOT NULL,
 	close DECIMAL(18,8) NOT NULL,
-   volume BIGINT NOT NULL,
+  volume BIGINT NOT NULL,
 	interest BIGINT NOT NULL,
-   closing_bid DECIMAL(18,8),
-   closing_ask DECIMAL(18,8));
+  contract BIGINT,
+  unadjusted_close DECIMAL(18,8),
+  cash DECIMAL(18,8),
+  closing_bid DECIMAL(18,8),
+  closing_ask DECIMAL(18,8));
 CREATE UNIQUE INDEX cb_unique on csi_bars (symbol,ts);
 
 DROP TABLE IF EXISTS symbol_mappings;
 CREATE TABLE IF NOT EXISTS symbol_mappings (
-	id INTEGER PRIMARY KEY NOT NULL,
-   portfolio VARCHAR(32) NOT NULL,
-   symbol VARCHAR(32) NOT NULL,
-   mapping VARCHAR(32) NOT NULL);
+  id INTEGER PRIMARY KEY NOT NULL,
+  portfolio VARCHAR(32) NOT NULL,
+  symbol VARCHAR(32) NOT NULL,
+  mapping VARCHAR(32) NOT NULL);
 CREATE UNIQUE INDEX symbol_mappings_unique on symbol_mappings (portfolio,symbol);
 
 DROP TABLE IF EXISTS kv;
 CREATE TABLE IF NOT EXISTS kv (
-   id INTEGER PRIMARY KEY NOT NULL,
-   key_text VARCHAR(200),
-   value_text VARCHAR(200));
+  id INTEGER PRIMARY KEY NOT NULL,
+  key_text VARCHAR(200),
+  value_text VARCHAR(200));
 CREATE UNIQUE INDEX kv_unique on kv (key_text);
 
 DROP TABLE IF EXISTS kv_bin;
 CREATE TABLE IF NOT EXISTS kv_bin (
-   id INTEGER PRIMARY KEY NOT NULL,
-   key_text VARCHAR(200),
-   value_bin BLOB);
+  id INTEGER PRIMARY KEY NOT NULL,
+  key_text VARCHAR(200),
+  value_bin BLOB);
 CREATE UNIQUE INDEX kv_bin_unique on kv_bin (key_text);
 
 DROP TABLE IF EXISTS categories;
 CREATE TABLE categories (
-   id INTEGER PRIMARY KEY NOT NULL,
-   name VARCHAR(64) NOT NULL,
-   ord INTEGER NOT NULL DEFAULT '10');
+  id INTEGER PRIMARY KEY NOT NULL,
+  name VARCHAR(64) NOT NULL,
+  ord INTEGER NOT NULL DEFAULT '10');
 
 INSERT INTO categories VALUES (1,'Grains',1);
 INSERT INTO categories VALUES (2,'Meats',10);

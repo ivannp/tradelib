@@ -245,9 +245,9 @@ CREATE TABLE IF NOT EXISTS clc_index (
 	contract_interest BIGINT NOT NULL,
 	volume BIGINT NOT NULL,
 	total_interest BIGINT NOT NULL,
-   INDEX ci_i1 (symbol),
-   INDEX ci_i2 (ts),
-   UNIQUE INDEX ci_unique (symbol,ts,type))
+  INDEX ci_i1 (symbol),
+  INDEX ci_i2 (ts),
+  UNIQUE INDEX ci_unique (symbol,ts,type))
 ENGINE = InnoDB;
 
 DROP TABLE IF EXISTS clc_rev;
@@ -262,7 +262,7 @@ CREATE TABLE IF NOT EXISTS clc_rev (
 	contract_interest BIGINT NOT NULL,
 	volume BIGINT NOT NULL,
 	total_interest BIGINT NOT NULL,
-   UNIQUE INDEX cr_unique (symbol,ts))
+  UNIQUE INDEX cr_unique (symbol,ts))
 ENGINE = InnoDB;
 
 DROP TABLE IF EXISTS clc_non;
@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS clc_non (
 	contract_interest BIGINT NOT NULL,
 	volume BIGINT NOT NULL,
 	total_interest BIGINT NOT NULL,
-   UNIQUE INDEX cn_unique (symbol,ts))
+  UNIQUE INDEX cn_unique (symbol,ts))
 ENGINE = InnoDB;
 
 DROP TABLE IF EXISTS clc_rad;
@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS clc_rad (
 	contract_interest BIGINT NOT NULL,
 	volume BIGINT NOT NULL,
 	total_interest BIGINT NOT NULL,
-   UNIQUE INDEX cn_unique (symbol,ts))
+  UNIQUE INDEX cn_unique (symbol,ts))
 ENGINE = InnoDB;
 
 DROP TABLE IF EXISTS csi_bars;
@@ -304,11 +304,14 @@ CREATE TABLE IF NOT EXISTS csi_bars (
 	high DECIMAL(18,8) NOT NULL,
 	low DECIMAL(18,8) NOT NULL,
 	close DECIMAL(18,8) NOT NULL,
-   volume BIGINT NOT NULL,
+  volume BIGINT NOT NULL,
 	interest BIGINT NOT NULL,
-   closing_bid DECIMAL(18,8),
-   closing_ask DECIMAL(18,8),
-   UNIQUE INDEX cb_unique (symbol,ts))
+  contract BIGINT,
+  unadjusted_close DECIMAL(18,8),
+  cash DECIMAL(18,8),
+  closing_bid DECIMAL(18,8),
+  closing_ask DECIMAL(18,8),
+  UNIQUE INDEX cb_unique (symbol,ts))
 ENGINE = InnoDB;
 
 DROP TABLE IF EXISTS symbol_mappings;
